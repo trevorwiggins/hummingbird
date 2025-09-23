@@ -1,4 +1,4 @@
-package com.example.hummingbird;
+package com.example.untitledmediaplayer;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

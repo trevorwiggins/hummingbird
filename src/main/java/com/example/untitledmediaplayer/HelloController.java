@@ -1,4 +1,4 @@
-package com.example.hummingbird;
+package com.example.untitledmediaplayer;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
