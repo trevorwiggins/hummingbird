@@ -1,6 +1,6 @@
 module com.example.untitledmediaplayer {
-    requires javafx.controls;
     requires javafx.fxml;
+    requires atlantafx.base;
 
 
     opens com.example.untitledmediaplayer to javafx.fxml;
