@@ -3,7 +3,6 @@ package com.example.hummingbird.ui;
 import atlantafx.base.theme.PrimerDark;
 import com.example.hummingbird.controller.AudioPlayerController;
 import com.example.hummingbird.model.PlaybackListener;
-•
 import com.example.hummingbird.model.Song;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
