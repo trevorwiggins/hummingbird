@@ -65,6 +65,7 @@ public class AudioPlayerUI extends Application implements PlaybackListener {
         stage.setScene(scene);
         stage.show();
 
+        //cleanly close the program and end all processes
         stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             @Override
             public void handle(WindowEvent windowEvent) {
