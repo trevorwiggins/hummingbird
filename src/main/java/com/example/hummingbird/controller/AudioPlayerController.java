@@ -30,18 +30,11 @@ public class AudioPlayerController implements Initializable {
     private MediaLibrary mediaLibrary;
     private AudioPlayerUI view;
 
-    private Media media; // song currently set to play
-    private MediaPlayer mediaPlayer; // player for song
-    private File directory;
-    private File[] files;
-    private ArrayList<File> songs;
-    private int songNumber = 0; // song index for playback
-    private Timer timer;
-    private boolean playback;
-    private double tempDouble, currentTime, endTime, seekValue;
-    private Duration currentSongTotalDuration; // total duration of current song
-    private Duration seekTimeDuration;
-
+    private Media media; //song currently set to play
+    private MediaPlayer mediaPlayer; //player for song
+    private ArrayList<File> songs; //current loaded queue
+    private int songNumber = 0; //song index for playback
+    private boolean userIsSeeking;
 
     @FXML
     private Label songLabel;
@@ -70,8 +63,6 @@ public class AudioPlayerController implements Initializable {
     //plays song
     @FXML
     void startPlayback(ActionEvent event) {
-        startTimer();
-        setCurrentSongDuration();
         /*
         For the next line, we multiply by .01 because the setVolume
         method, belonging to the mediaPlayer, can only take values
@@ -87,16 +78,11 @@ public class AudioPlayerController implements Initializable {
     //pauses song
     @FXML
     void stopPlayback(ActionEvent event) {
-        stopTimer();
         mediaPlayer.pause();
-        tempDouble = mediaPlayer.getCurrentTime().toSeconds();
-        tempDouble = truncateDouble(tempDouble);
-        //System.out.println("current time: " + tempDouble + " secs");
     }
 
-
     /*
-    The next two functions focus on making sure that the program properly loops
+    The next three functions focus on making sure that the program properly loops
     through the songs even when reaching the start or end of the queue.
 
     Will implement later full interaction with queue. For now, it uses a preset
@@ -108,36 +94,25 @@ public class AudioPlayerController implements Initializable {
     }
 
     private void queueNextSongNonEvent() {
-        if (songNumber < songs.size() - 1) { //makes sure songNumber is inside the bounds of the songs array
+        if (songNumber < songs.size() - 1) //makes sure songNumber is inside the bounds of the songs array
             songNumber++;
-            updateUI();
-        }
-        else {
-            //set songNumber to the start of the songs array
-            songNumber = 0;
-            updateUI();
-        }
+        else
+            songNumber = 0; //set songNumber to the start of the songs array
+        updateUI();
     }
 
     @FXML
     void queuePrevSong(ActionEvent event) {
-        if (songNumber > 0) { //makes sure songNumber is inside the bounds of the songs array
+        if (songNumber > 0) //makes sure songNumber is inside the bounds of the songs array
             songNumber--;
-            updateUI();
-        }
-        else {
-            //set songNumber to the end of the songs array
-            songNumber = songs.size() - 1;
-            updateUI();
-        }
+        else
+            songNumber = songs.size() - 1; //set songNumber to the end of the songs array
+        updateUI();
     }
 
-    //Handles resetting the scene and timer with the new song
+    //Handles resetting the scene with the new song
     public void updateUI() {
         mediaPlayer.stop();
-
-        if (playback) //if currently playing a song
-            stopTimer();
 
         //passes the new song from the songs array by converting the filepath (toURI) into a String
         media = new Media(songs.get(songNumber).toURI().toString());
@@ -146,62 +121,46 @@ public class AudioPlayerController implements Initializable {
         songLabel.setText(songs.get(songNumber).getName());
 
         mediaPlayer.setVolume(volumeSlider.getValue() * 0.01);
-        startTimer();
+        attachMediaPlayListeners();
         mediaPlayer.play();
     }
 
-    //Start of the timer used for updating songProgressBar
-    public void startTimer() {
-        timer = new Timer();
+    private void attachMediaPlayListeners() {
+        //smooth, safe progress updating (disabled while user drags slider)
+        mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
 
-        TimerTask task = new TimerTask() { //start timer
-            @Override
-            public void run() {
-                playback = true;
-                currentTime = mediaPlayer.getCurrentTime().toSeconds();
-                endTime = media.getDuration().toSeconds();
-                songProgressBar.setProgress(currentTime / endTime);
+            if (userIsSeeking)
+                return; // don't overwrite user's dragging
 
-                if (currentTime / endTime == 1) { //if song is finished
-                    stopTimer();
-                    //queueNextSongNonEvent();
-                }
+            if (mediaPlayer.getTotalDuration().toMillis() > 0) {
+                double progress = newTime.toMillis() / mediaPlayer.getTotalDuration().toMillis();
+                songProgressBar.setProgress(progress);
+                songProgressSlider.setValue(progress);
             }
-        };
+        });
 
-        //sets timer to execute the TimerTask task with a delay of 0ms, at a rate of 1000ms (1s)
-        timer.scheduleAtFixedRate(task, 0, 1000);
-    }
-
-    public void stopTimer() {
-        playback = false;
-        timer.cancel();
+        // automatically switch to next song at end of current song
+        mediaPlayer.setOnEndOfMedia(() -> queueNextSongNonEvent());
     }
 
     @FXML
     void seekTo(MouseEvent event) {
-        seekValue = songProgressSlider.getValue();
-        seekValue = truncateDouble(seekValue);
-        //System.out.println("current percent: " + seekValue);
+        double sliderPercent = songProgressSlider.getValue();
+        sliderPercent = truncateDouble(sliderPercent);
 
-        endTime = media.getDuration().toMillis();
-        double seekTime = seekValue * endTime;
-        seekTimeDuration = new Duration(seekTime);
-        //System.out.println(seekTimeDuration.toSeconds());
+        double endTime = media.getDuration().toMillis();
+        double seekTimeMillis = sliderPercent * endTime;
+        Duration seekTimeDuration = new Duration(seekTimeMillis);
 
         mediaPlayer.seek(seekTimeDuration);
     }
 
+    //truncates any double into 2 decimal places and returns it
     public double truncateDouble (double value) {
         BigDecimal bd = new BigDecimal(value);
         bd = bd.setScale(2, RoundingMode.DOWN);
         value = bd.doubleValue();
         return value;
-    }
-
-    public void setCurrentSongDuration() {
-        currentSongTotalDuration = new Duration(media.getDuration().toMillis());
-        //System.out.println(currentSongTotalDuration.toSeconds() + " secs");
     }
 
     //lines 159-167 is old code we had from when we initially set up the skeleton code, need to implement later
@@ -218,8 +177,8 @@ public class AudioPlayerController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         //fetches songs from temporary playlist and puts into songs array for playback
         songs = new ArrayList<File>();
-        directory = new File("users/test_user/playlists/test_playlist");
-        files = directory.listFiles();
+        File directory = new File("users/test_user/playlists/test_playlist");
+        File[] files = directory.listFiles();
 
         if (files != null) { //makes sure user playlist isn't empty
             for (File file : files) {
@@ -241,5 +200,31 @@ public class AudioPlayerController implements Initializable {
                 mediaPlayer.setVolume(volumeSlider.getValue() * 0.01);
             }
         });
+
+        attachMediaPlayListeners();
+
+        // detect when user starts and stops dragging the slider
+        // drag and drop seek
+        songProgressSlider.valueChangingProperty().addListener((obs, was, isChanging) -> {
+            userIsSeeking = isChanging;
+
+            if (!isChanging) {
+                double pct = songProgressSlider.getValue();
+                double totalMillis = media.getDuration().toMillis();
+                mediaPlayer.seek(Duration.millis(pct * totalMillis));
+            }
+        });
+
+        // single click seek
+        songProgressSlider.setOnMousePressed(event -> userIsSeeking = true);
+
+        songProgressSlider.setOnMouseReleased(event -> {
+            userIsSeeking = false;
+
+            double pct = songProgressSlider.getValue();
+            mediaPlayer.seek(Duration.millis(pct * media.getDuration().toMillis()));
+        });
+
+        mediaPlayer.pause();
     }
 }

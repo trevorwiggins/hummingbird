@@ -17,12 +17,16 @@
                 <Font size="24.0" />
             </font>
         </Label>
-      <AnchorPane prefHeight="18.0" prefWidth="600.0">
+      <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
          <children>
-              <ProgressBar fx:id="songProgressBar" minWidth="-Infinity" prefHeight="18.0" prefWidth="600.0" progress="0.0" />
-            <Slider fx:id="songProgressSlider" layoutX="-1.0" layoutY="2.0" max="1.0" onMouseReleased="#seekTo" prefHeight="14.0" prefWidth="599.0" style="-fx-cursor: hand; -fx-opacity: 0;" />
+            <AnchorPane prefHeight="18.0" prefWidth="600.0">
+               <children>
+                    <ProgressBar fx:id="songProgressBar" layoutX="-1.0" minWidth="-Infinity" prefHeight="18.0" prefWidth="599.0" progress="0.0" />
+                  <Slider fx:id="songProgressSlider" max="1.0" onMouseReleased="#seekTo" prefHeight="14.0" prefWidth="599.0" style="-fx-cursor: hand; -fx-blend-mode: overlay;" />
+               </children>
+            </AnchorPane>
          </children>
-      </AnchorPane>
+      </HBox>
         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
             <children>
                 <Button fx:id="prevButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#queuePrevSong" style="-fx-cursor: hand;" text="PREVIOUS" />
@@ -32,7 +36,7 @@
             </children>
         </HBox>
         <Label text="Volume" />
-        <Slider fx:id="volumeSlider" max="100.0" minWidth="-Infinity" prefHeight="14.0" prefWidth="500.0" showTickLabels="true" showTickMarks="true" style="-fx-cursor: hand;" value="50.0" />
+        <Slider fx:id="volumeSlider" max="100.0" maxWidth="-Infinity" prefHeight="14.0" prefWidth="600.0" showTickLabels="true" showTickMarks="true" style="-fx-cursor: hand;" value="50.0" />
     </children>
     <padding>
         <Insets left="50.0" right="50.0" />

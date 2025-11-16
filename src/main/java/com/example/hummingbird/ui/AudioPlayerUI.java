@@ -63,8 +63,6 @@ public class AudioPlayerUI extends Application implements PlaybackListener {
         Scene scene = new Scene(fxmlLoader.load(), 700, 200);
         stage.setTitle("Hummingbird");
         stage.setScene(scene);
-        // line below is to ensure that the progress bar will always be the same size as the slider progress
-        stage.setResizable(false);
         stage.show();
 
         //cleanly close the program and end all processes
