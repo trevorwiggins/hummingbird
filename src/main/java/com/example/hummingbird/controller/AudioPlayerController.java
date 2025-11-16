@@ -2,6 +2,8 @@ package com.example.hummingbird.controller;
 
 import com.example.hummingbird.model.*;
 import com.example.hummingbird.ui.AudioPlayerUI;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
@@ -11,8 +13,10 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Slider;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
+import javafx.util.Duration;
 
 import java.io.File;
 import java.net.URL;
@@ -26,14 +30,18 @@ public class AudioPlayerController implements Initializable {
     private MediaLibrary mediaLibrary;
     private AudioPlayerUI view;
 
-    private Media media;
-    private MediaPlayer mediaPlayer;
+    private Media media; // song currently set to play
+    private MediaPlayer mediaPlayer; // player for song
     private File directory;
     private File[] files;
     private ArrayList<File> songs;
-    private int songNumber = 0;
+    private int songNumber = 0; // song index for playback
     private Timer timer;
     private boolean playback;
+    private double tempDouble, currentTime, endTime, seekValue;
+    private Duration currentSongTotalDuration; // total duration of current song
+    private Duration seekTimeDuration;
+
 
     @FXML
     private Label songLabel;
@@ -56,10 +64,14 @@ public class AudioPlayerController implements Initializable {
     @FXML
     private Slider volumeSlider;
 
+    @FXML
+    private Slider songProgressSlider;
+
     //plays song
     @FXML
     void startPlayback(ActionEvent event) {
         startTimer();
+        setCurrentSongDuration();
         /*
         For the next line, we multiply by .01 because the setVolume
         method, belonging to the mediaPlayer, can only take values
@@ -69,6 +81,7 @@ public class AudioPlayerController implements Initializable {
          */
         mediaPlayer.setVolume(volumeSlider.getValue() * 0.01);
         mediaPlayer.play();
+
     }
 
     //pauses song
@@ -76,6 +89,9 @@ public class AudioPlayerController implements Initializable {
     void stopPlayback(ActionEvent event) {
         stopTimer();
         mediaPlayer.pause();
+        tempDouble = mediaPlayer.getCurrentTime().toSeconds();
+        tempDouble = truncateDouble(tempDouble);
+        //System.out.println("current time: " + tempDouble + " secs");
     }
 
 
@@ -88,6 +104,10 @@ public class AudioPlayerController implements Initializable {
      */
     @FXML
     void queueNextSong(ActionEvent event) {
+        queueNextSongNonEvent();
+    }
+
+    private void queueNextSongNonEvent() {
         if (songNumber < songs.size() - 1) { //makes sure songNumber is inside the bounds of the songs array
             songNumber++;
             updateUI();
@@ -138,12 +158,13 @@ public class AudioPlayerController implements Initializable {
             @Override
             public void run() {
                 playback = true;
-                double current = mediaPlayer.getCurrentTime().toSeconds();
-                double end = media.getDuration().toSeconds();
-                songProgressBar.setProgress(current / end);
+                currentTime = mediaPlayer.getCurrentTime().toSeconds();
+                endTime = media.getDuration().toSeconds();
+                songProgressBar.setProgress(currentTime / endTime);
 
-                if (current / end == 1) { //if song is finished
+                if (currentTime / endTime == 1) { //if song is finished
                     stopTimer();
+                    //queueNextSongNonEvent();
                 }
             }
         };
@@ -155,6 +176,32 @@ public class AudioPlayerController implements Initializable {
     public void stopTimer() {
         playback = false;
         timer.cancel();
+    }
+
+    @FXML
+    void seekTo(MouseEvent event) {
+        seekValue = songProgressSlider.getValue();
+        seekValue = truncateDouble(seekValue);
+        //System.out.println("current percent: " + seekValue);
+
+        endTime = media.getDuration().toMillis();
+        double seekTime = seekValue * endTime;
+        seekTimeDuration = new Duration(seekTime);
+        //System.out.println(seekTimeDuration.toSeconds());
+
+        mediaPlayer.seek(seekTimeDuration);
+    }
+
+    public double truncateDouble (double value) {
+        BigDecimal bd = new BigDecimal(value);
+        bd = bd.setScale(2, RoundingMode.DOWN);
+        value = bd.doubleValue();
+        return value;
+    }
+
+    public void setCurrentSongDuration() {
+        currentSongTotalDuration = new Duration(media.getDuration().toMillis());
+        //System.out.println(currentSongTotalDuration.toSeconds() + " secs");
     }
 
     //lines 159-167 is old code we had from when we initially set up the skeleton code, need to implement later
