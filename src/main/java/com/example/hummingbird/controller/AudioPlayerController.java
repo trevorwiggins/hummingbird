@@ -2,17 +2,13 @@ package com.example.hummingbird.controller;
 
 import com.example.hummingbird.model.*;
 import com.example.hummingbird.ui.AudioPlayerUI;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.control.Slider;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -21,6 +17,8 @@ import javafx.util.Duration;
 import java.io.File;
 import java.net.URL;
 import java.util.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class AudioPlayerController implements Initializable {
     //lines 23-27 is old code we had from when we initially set up the skeleton code, need to implement later
@@ -177,7 +175,7 @@ public class AudioPlayerController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         //fetches songs from temporary playlist and puts into songs array for playback
         songs = new ArrayList<File>();
-        File directory = new File("users/test_user/playlists/test_playlist");
+        File directory = new File("users/test_user1/playlists/test_playlist2");
         File[] files = directory.listFiles();
 
         if (files != null) { //makes sure user playlist isn't empty
