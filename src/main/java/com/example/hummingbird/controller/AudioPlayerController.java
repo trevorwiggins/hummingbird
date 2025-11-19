@@ -127,7 +127,7 @@ public class AudioPlayerController implements Initializable {
         media = new Media(current.getSongFile().toURI().toString());
         mediaPlayer = new MediaPlayer(media);
 
-        songLabel.setText(current.getSongFile().getName());
+        songLabel.setText(current.getTitle());
         mediaPlayer.setVolume(volumeSlider.getValue() * 0.01);
 
         attachMediaPlayListeners();
@@ -169,7 +169,7 @@ public class AudioPlayerController implements Initializable {
         }
     }
 
-    /** Queue all songs from the selected playlist */
+    /** Queue all songs from the selected playlist (metadata-aware duplicate prevention) */
     @FXML
     void queueSelectedPlaylist(ActionEvent event) {
         SelectionModel<String> selectionModel = mediaListView.getSelectionModel();
@@ -180,8 +180,11 @@ public class AudioPlayerController implements Initializable {
 
         List<Song> selectedPlaylist = playlistManager.getPlaylist(selectedPlaylistName);
 
+        // Add songs only if they are not already in the queue
         for (Song song : selectedPlaylist) {
-            queueManager.addSong(song);
+            if (!queueManager.getQueue().contains(song)) { // ✅ Metadata-aware duplicate check
+                queueManager.addSong(song);
+            }
         }
 
         queueCreated.set(!queueManager.isEmpty());
@@ -191,7 +194,7 @@ public class AudioPlayerController implements Initializable {
         if (first != null) {
             media = new Media(first.getSongFile().toURI().toString());
             mediaPlayer = new MediaPlayer(media);
-            songLabel.setText(first.getSongFile().getName());
+            songLabel.setText(first.getTitle());
             attachMediaPlayListeners();
             mediaPlayer.pause();
         }
@@ -240,7 +243,7 @@ public class AudioPlayerController implements Initializable {
                 if (idx >= 0 && idx < songs.size()) {
                     Song selectedSong = playlistManager.getSongFromPlaylist(name, idx);
 
-                    // Prevent adding duplicates
+                    // Metadata-aware duplicate prevention
                     if (queueManager.getQueue().contains(selectedSong)) {
                         System.out.println("Song already in queue: " + selectedSong);
                         return;
@@ -253,7 +256,7 @@ public class AudioPlayerController implements Initializable {
                     if (queueManager.getQueueSize() == 1) {
                         media = new Media(selectedSong.getSongFile().toURI().toString());
                         mediaPlayer = new MediaPlayer(media);
-                        songLabel.setText(selectedSong.getSongFile().getName());
+                        songLabel.setText(selectedSong.getTitle()); // Metadata-aware display
                         attachMediaPlayListeners();
                         mediaPlayer.pause();
                     }

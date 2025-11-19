@@ -5,6 +5,7 @@ module com.example.hummingbird {
     requires javafx.media;
     requires javafx.base;
     requires java.sql;
+    requires jaudiotagger;
     exports com.example.hummingbird.ui;
     opens com.example.hummingbird.controller to javafx.fxml;
     opens com.example.hummingbird.ui to javafx.fxml;
