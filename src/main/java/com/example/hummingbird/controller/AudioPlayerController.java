@@ -286,6 +286,7 @@ public class AudioPlayerController implements Initializable {
         }
 
         songLabel.setText("Please select a playlist from the library below");
+        listViewMode.set("playlists");
         displayPlaylists();
         songProgressBar.setProgress(0);
         songProgressSlider.setValue(0);
