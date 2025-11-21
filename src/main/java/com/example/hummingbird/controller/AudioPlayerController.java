@@ -575,8 +575,21 @@ public class AudioPlayerController implements Initializable {
         // No queue exists initially
         queueCreated.set(false);
 
-        // Load playlist directory and initialize managers
-        directory = new File("users/test_user1/playlists");
+        // get the logged in user's information
+        UserSession session = UserSession.getInstance();
+
+        // make sure someone is actually logged in
+        if(!session.isLoggedIn()){
+            System.err.println("ERROR: No user logged in!");
+            return;
+        }
+
+        //get the directory where this user's playlists are stored
+        directory = session.getPlaylistDirectory();
+
+        System.out.println("Loading playlists for user: " + session.getUsername());
+        System.out.println("Playlist directory: " + directory.getPath());
+
         playlistManager = new PlaylistManager(directory);
         queueManager = new QueueManager();
 
