@@ -59,9 +59,9 @@ public class AudioPlayerUI extends Application implements PlaybackListener {
     @Override
     public void start(Stage stage) throws IOException {
         Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
-        FXMLLoader fxmlLoader = new FXMLLoader(AudioPlayerUI.class.getResource("/com/example/hummingbird/mainscene.fxml"));
+        FXMLLoader fxmlLoader = new FXMLLoader(AudioPlayerUI.class.getResource("/com/example/hummingbird/loginscene.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 700, 800);
-        stage.setTitle("Hummingbird");
+        stage.setTitle("Hummingbird - Login");
         stage.setScene(scene);
         stage.show();
 
