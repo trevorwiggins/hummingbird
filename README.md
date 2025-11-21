@@ -28,18 +28,18 @@ Hummingbird allows you to:
 
 - Display song metadata such as title, artist, and duration.
 
-It uses the jaudiotagger library to extract metadata from .mp3 files.
+- Import `.mp3` files directly from your file system into playlists.
 
 ---
 ## Installing Dependencies
 
-Hummingbird uses jaudiotagger for reading metadata from audio files.
+Hummingbird uses **jaudiotagger** for reading metadata from audio files.
 
 ### Maven
 
-Add the following dependency to your pom.xml:
+Add the following dependency to your `pom.xml` file:
 
-```
+```xml
 <dependency>
     <groupId>org.jaudiotagger</groupId>
     <artifactId>jaudiotagger</artifactId>
@@ -67,15 +67,15 @@ Hummingbird reads song metadata using jaudiotagger:
 
 When a song is loaded:
 
-1. Hummingbird opens the .mp3 file using jaudiotagger.
+1. Hummingbird opens the `.mp3` file using jaudiotagger.
 
-2. It reads the embedded ID3 tags for TITLE, ARTIST, and duration.
+2. It reads the embedded ID3 tags for _Title_, _Artist_, and _Duration_.
 
 3. If metadata exists, it is displayed in the UI; if not, the filename is used as a fallback.
 
 ### User Recommendation
 
-For best results, download .mp3 files from sources that embed proper ID3 tags (e.g., iTunes, Amazon Music, Bandcamp, or properly ripped CDs).
+For best results, download `.mp3` files from sources that embed proper ID3 tags (e.g., iTunes, Amazon Music, Bandcamp, or properly ripped CDs).
 
 Avoid files with missing or corrupted metadata, as Hummingbird will fall back to filenames.
 
@@ -102,9 +102,9 @@ users/
 
 
 **Notes:**
-* Each playlist is a folder under playlists/.
+* Each playlist is a folder under `playlists/`.
 * Playlist name = folder name (e.g., Playlist1).
-* All .mp3 files in a folder are considered part of that playlist.
+* All `.mp3` files in a folder are considered part of that playlist.
 
 ### File Naming
 
@@ -121,42 +121,56 @@ Recommended format:
 
 - **Avoid special characters in filenames.**
 
-- Only .mp3 files are supported; other formats are ignored.
+- Only `.mp3` files are supported; other formats are ignored.
 
 - Keep playlist folders flat (no nested subfolders).
 
 ---
 ## Using Hummingbird
 
-1. Place your playlists under **users/<your_username>/playlists/**.
+1. Place your playlists under `users/<your_username>/playlists/`.
 
 2. Launch the Hummingbird application.
 
 3. Use the Library view to see available playlists.
 
-4. Click Open or Queue to view a playlist in the player.
+4. Click the Open button to view a playlist in the player.
 
-5. Playback controls:
+5. Click the Import button to add your own songs to a playlist.
 
+6. Playback controls:
 
-    Button	      |  Function
-    -------------------------------------------------------
-    Play	      |  Starts/resumes playback
-    Pause	      |  Pauses playback
-    Next	      |  Skips to next song in queue
-    Prev	      |  Goes back to previous song in queue
-    Clear Queue   |  Clears the current queue
+```
+    Button                  |  Function
+    --------------------------------------------------------------------------------
+    Play/Pause              |  Starts/resumes/pauses playback
+                            |
+    Next                    |  Skips to next song in queue
+                            |
+    Previous                |  Goes back to previous song in queue
+                            |
+    Playlists               |  Displays currently loaded playlists
+                            |
+    Queue                   |  Displays currently loaded queue
+                            |
+    Import MP3              |  Allows for import of .mp3 files from file explorer
+                            |
+    Play Selected Playlist  |  Queues currently selected playlist
+                            |
+    Open Selected Playlist  |  Previews currently selected playlist
+                            |
+    Clear Queue             |  Clears the current queue
+```
+7. Drag-and-drop within the queue view to reorder songs.
 
-6. Drag-and-drop within the queue view to reorder songs.
+8. Right-click a song in playlist view to add it to the queue individually.
 
-7. Right-click a song in playlist view to add it to the queue individually.
-
-**Metadata Display:** Only the song _title_ is shown in the songLabel. Queue and list views display _title_, _artist_, and _duration_.
+**Metadata Display:** Only the song _Title_ is shown in the songLabel. Queue and list views display _Title_, _Artist_, and _Duration_.
 
 ---
 ## Tips and Best Practices
 
-- Always use .mp3 files with ID3 tags for the best experience.
+- Always use `.mp3` files with ID3 tags for the best experience.
 
 - Keep playlists in separate folders with meaningful names.
 
