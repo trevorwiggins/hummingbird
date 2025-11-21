@@ -20,8 +20,7 @@ public class Song {
 
     /**
      * Constructs a Song object from a File and reads its metadata using jaudiotagger.
-     * If metadata is unavailable, defaults are used.
-     *
+     * If metadata is unavailable, defaults are used
      * @param songFile the audio file
      */
     public Song(File songFile) {
