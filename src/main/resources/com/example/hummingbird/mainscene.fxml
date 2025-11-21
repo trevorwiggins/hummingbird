@@ -31,8 +31,7 @@
         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
             <children>
                 <Button fx:id="prevButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#queuePrevSong" style="-fx-cursor: hand;" text="PREVIOUS" />
-                <Button fx:id="playButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#startPlayback" style="-fx-cursor: hand;" text="PLAY" />
-                <Button fx:id="pauseButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#stopPlayback" style="-fx-cursor: hand;" text="PAUSE" />
+                <Button fx:id="playbackButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#playback" style="-fx-cursor: hand;" text="TEMP" />
                 <Button fx:id="nextButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#queueNextSong" style="-fx-cursor: hand;" text="NEXT" />
             </children>
         </HBox>
@@ -43,12 +42,17 @@
          </padding></Slider>
       <HBox alignment="CENTER" prefHeight="40.0">
          <children>
-            <Button fx:id="playlistsDisplayButton" minWidth="60.0" mnemonicParsing="false" onAction="#playlistMode" style="-fx-cursor: hand;" text="Playlists">
+            <Button fx:id="playlistsDisplayButton" minWidth="90.0" mnemonicParsing="false" onAction="#playlistMode" style="-fx-cursor: hand;" text="Playlists">
                <HBox.margin>
                   <Insets right="5.0" />
                </HBox.margin>
             </Button>
-            <Button fx:id="queueDisplayButton" minWidth="60.0" mnemonicParsing="false" onAction="#queueMode" style="-fx-cursor: hand;" text="Queue">
+            <Button fx:id="queueDisplayButton" minWidth="90.0" mnemonicParsing="false" onAction="#queueMode" style="-fx-cursor: hand;" text="Queue">
+               <HBox.margin>
+                  <Insets left="5.0" right="5.0" />
+               </HBox.margin>
+            </Button>
+            <Button fx:id="importMP3Button" minWidth="90.0" mnemonicParsing="false" onAction="#importMP3" text="Import MP3">
                <HBox.margin>
                   <Insets left="5.0" />
                </HBox.margin>
@@ -68,7 +72,7 @@
             <Label fx:id="infoLabel2" text="Second Info Label" />
          </children>
       </HBox>
-      <ListView fx:id="mediaListView" maxWidth="600.0" prefWidth="600.0">
+      <ListView fx:id="mediaListView" maxWidth="800.0" minWidth="600.0">
          <VBox.margin>
             <Insets bottom="10.0" />
          </VBox.margin></ListView>
