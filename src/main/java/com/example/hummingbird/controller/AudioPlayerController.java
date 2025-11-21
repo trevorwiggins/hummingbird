@@ -144,6 +144,7 @@ public class AudioPlayerController implements Initializable {
         media = new Media(current.getSongFile().toURI().toString());
         mediaPlayer = new MediaPlayer(media);
 
+        // Only display the song's title, not full file info
         songLabel.setText(current.getTitle());
         mediaPlayer.setVolume(volumeSlider.getValue() * 0.01);
 
@@ -180,7 +181,8 @@ public class AudioPlayerController implements Initializable {
 
         if (queueManager != null) {
             for (Song song : queueManager.getQueue()) {
-                mediaListView.getItems().add(song.toString());
+                // Only show song title in queue list
+                mediaListView.getItems().add(song.getTitle());
             }
             enableQueueDragAndDrop();
         }
@@ -211,7 +213,7 @@ public class AudioPlayerController implements Initializable {
         if (first != null) {
             media = new Media(first.getSongFile().toURI().toString());
             mediaPlayer = new MediaPlayer(media);
-            songLabel.setText(first.getTitle());
+            songLabel.setText(first.getTitle()); // Only title shown
             attachMediaPlayListeners();
             mediaPlayer.pause();
         }
@@ -239,6 +241,7 @@ public class AudioPlayerController implements Initializable {
         if (songs == null) return;
 
         for (Song song : songs) {
+            // Show full file information
             mediaListView.getItems().add(song.toString());
         }
 
@@ -546,35 +549,6 @@ public class AudioPlayerController implements Initializable {
         });
     }
 
-    /**
-     * Refreshes the PlaylistManager and updates ListView with newly imported songs.
-     * Dynamically creates Song objects and updates the display.
-     */
-    private void refreshSongList(List<File> newFiles) {
-        if (newFiles == null || newFiles.isEmpty()) return;
-
-        String targetPlaylistName = null;
-
-        if (listViewMode.get().equals("playlists")) {
-            targetPlaylistName = mediaListView.getSelectionModel().getSelectedItem();
-        } else if (listViewMode.get().equals("songs")) {
-            targetPlaylistName = infoLabel2.getText();
-        }
-
-        if (targetPlaylistName == null) return;
-
-        // Add new songs to PlaylistManager
-        for (File file : newFiles) {
-            Song song = new Song(file);
-            playlistManager.addSongToPlaylist(song, targetPlaylistName);
-        }
-
-        // Refresh ListView display
-        if (listViewMode.get().equals("songs")) {
-            displaySongs(targetPlaylistName);
-        }
-    }
-
     private Path getUniqueFilePath(Path directory, String fileName) {
         Path target = directory.resolve(fileName);
 
@@ -640,6 +614,13 @@ public class AudioPlayerController implements Initializable {
                 case "playlists" -> {
                     openSelectedPlaylistButton.setDisable(false);
                     queueSelectedPlaylistButton.setDisable(false);
+                    mediaListView.setCellFactory(lv -> new ListCell<>() { // reset factory
+                        @Override
+                        protected void updateItem(String item, boolean empty) {
+                            super.updateItem(item, empty);
+                            setText(empty ? null : item);
+                        }
+                    });
                     displayPlaylists();
                 }
                 case "queue" -> {
@@ -650,6 +631,13 @@ public class AudioPlayerController implements Initializable {
                 case "songs" -> {
                     openSelectedPlaylistButton.setDisable(true);
                     queueSelectedPlaylistButton.setDisable(true);
+                    mediaListView.setCellFactory(lv -> new ListCell<>() {
+                        @Override
+                        protected void updateItem(String item, boolean empty) {
+                            super.updateItem(item, empty);
+                            setText(empty ? null : item);
+                        }
+                    });
                 }
             }
         });

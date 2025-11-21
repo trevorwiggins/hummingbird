@@ -9,6 +9,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Line?>
 <?import javafx.scene.text.Font?>
 
 <VBox alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefWidth="700.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.hummingbird.controller.AudioPlayerController">
@@ -31,7 +32,7 @@
         <HBox alignment="CENTER" prefHeight="100.0" prefWidth="200.0">
             <children>
                 <Button fx:id="prevButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#queuePrevSong" style="-fx-cursor: hand;" text="PREVIOUS" />
-                <Button fx:id="playbackButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#playback" style="-fx-cursor: hand;" text="TEMP" />
+                <Button fx:id="playbackButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#playback" style="-fx-cursor: hand;" text="PLAYBACK" />
                 <Button fx:id="nextButton" minHeight="50.0" minWidth="80.0" mnemonicParsing="false" onAction="#queueNextSong" style="-fx-cursor: hand;" text="NEXT" />
             </children>
         </HBox>
@@ -40,6 +41,7 @@
          <padding>
             <Insets bottom="30.0" />
          </padding></Slider>
+      <Line endX="270.0" fill="#6e6e6e" startX="-400.0" stroke="#6e6e6e" strokeWidth="5.0" />
       <HBox alignment="CENTER" prefHeight="40.0">
          <children>
             <Button fx:id="playlistsDisplayButton" minWidth="90.0" mnemonicParsing="false" onAction="#playlistMode" style="-fx-cursor: hand;" text="Playlists">
@@ -52,7 +54,7 @@
                   <Insets left="5.0" right="5.0" />
                </HBox.margin>
             </Button>
-            <Button fx:id="importMP3Button" minWidth="90.0" mnemonicParsing="false" onAction="#importMP3" text="Import MP3">
+            <Button fx:id="importMP3Button" minWidth="90.0" mnemonicParsing="false" onAction="#importMP3" style="-fx-cursor: hand;" text="Import MP3">
                <HBox.margin>
                   <Insets left="5.0" />
                </HBox.margin>
