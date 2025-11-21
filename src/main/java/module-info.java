@@ -3,6 +3,8 @@ module com.example.hummingbird {
     requires javafx.controls;
     requires atlantafx.base;
     requires javafx.media;
+    requires javafx.base;
+    requires java.desktop;
     exports com.example.hummingbird.ui;
     opens com.example.hummingbird.controller to javafx.fxml;
     opens com.example.hummingbird.ui to javafx.fxml;
