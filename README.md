@@ -165,7 +165,7 @@ Recommended format:
 
 8. Right-click a song in playlist view to add it to the queue individually.
 
-**Metadata Display:** Only the song _Title_ is shown in the songLabel. Queue and list views display _Title_, _Artist_, and _Duration_.
+**Metadata Display:** Only the song _Title_ is shown at the top. Queue and Playlist mode display _Title_, _Artist_, and _Duration_.
 
 ---
 ## Tips and Best Practices
