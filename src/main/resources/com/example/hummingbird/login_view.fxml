@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="500.0" spacing="20.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.hummingbird.controller.LoginController">
+    <children>
+        <Label text="Hummingbird" textAlignment="CENTER">
+            <font>
+                <Font size="36.0" />
+            </font>
+        </Label>
+        <Label text="Music Player Login" textAlignment="CENTER">
+            <font>
+                <Font size="18.0" />
+            </font>
+        </Label>
+
+        <VBox alignment="CENTER" maxWidth="350.0" spacing="10.0">
+            <children>
+                <Label text="Username:" />
+                <TextField fx:id="usernameField" promptText="Enter username" />
+
+                <Label text="Password:">
+                    <VBox.margin>
+                        <Insets top="10.0" />
+                    </VBox.margin>
+                </Label>
+                <PasswordField fx:id="passwordField" promptText="Enter password" />
+
+                <Label fx:id="errorLabel" textFill="RED" visible="false">
+                    <VBox.margin>
+                        <Insets top="5.0" />
+                    </VBox.margin>
+                </Label>
+
+                <Button fx:id="loginButton" defaultButton="true" minWidth="120.0" mnemonicParsing="false" onAction="#handleLogin" style="-fx-cursor: hand;" text="Login">
+                    <VBox.margin>
+                        <Insets top="20.0" />
+                    </VBox.margin>
+                </Button>
+            </children>
+        </VBox>
+
+        <Button fx:id="createAccountButton" minWidth="120.0" mnemonicParsing="false" onAction="#handleShowCreateAccountDialog" style="-fx-cursor: hand;" text="Create Account" />
+    </children>
+    <padding>
+        <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+    </padding>
+</VBox>

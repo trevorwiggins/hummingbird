@@ -8,9 +8,9 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<HBox fx:id="mainContent" alignment="TOP_CENTER" maxWidth="-Infinity" prefWidth="900.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.hummingbird.controller.PlaylistManagerController">
+<HBox fx:id="mainContent" alignment="TOP_CENTER" maxWidth="-Infinity" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.hummingbird.controller.PlaylistManagerController">
    <children>
-      <VBox alignment="TOP_CENTER" minWidth="650.0">
+      <VBox alignment="TOP_CENTER">
          <children>
             <Label fx:id="infoLabel1" text="INFO LABEL" textAlignment="CENTER">
                <font>
@@ -32,7 +32,7 @@
                         <Insets left="5.0" right="5.0" />
                      </HBox.margin>
                   </Button>
-                  <Button fx:id="importMP3Button" mnemonicParsing="false" onAction="#importMP3" text="Import MP3">
+                  <Button fx:id="importMP3Button" mnemonicParsing="false" onAction="#importMP3" style="-fx-cursor: hand;" text="Import MP3">
                      <HBox.margin>
                         <Insets left="5.0" right="5.0" />
                      </HBox.margin>
@@ -80,4 +80,7 @@
          </children>
       </VBox>
    </children>
+   <padding>
+      <Insets left="10.0" right="10.0" />
+   </padding>
 </HBox>

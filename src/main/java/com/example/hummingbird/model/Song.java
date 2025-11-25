@@ -9,69 +9,136 @@ import org.jaudiotagger.tag.Tag;
 import java.io.File;
 
 /**
- * Represents a single audio track with metadata such as title, artist, duration,
- * and the underlying audio file.
+ * Represents a single audio track in the application.
+ *
+ * Responsibilities:
+ * <ul>
+ *     <li>Wrap the underlying audio {@link File}.</li>
+ *     <li>Expose metadata such as title, artist, and duration.</li>
+ *     <li>Provide a stable identity based on the canonical file path
+ *         (used by collections like {@link java.util.Set}).</li>
+ * </ul>
+ *
+ * Metadata is loaded using the jaudiotagger library. If metadata
+ * cannot be read, sensible fallback values are used.
  */
 public class Song {
-    private String title;      // Song title (from metadata or fallback to filename)
-    private String artist;     // Song artist (from metadata or "unknown")
-    private File songFile;     // Original file reference
-    private double duration;   // Duration of the song in seconds
+
+    /** Song title (metadata TITLE tag, or file name when missing). */
+    private String title;
+
+    /** Song artist (metadata ARTIST tag, or "unknown" when missing). */
+    private String artist;
+
+    /** Underlying audio file on disk. */
+    private File songFile;
+
+    /** Duration of the track in seconds (from audio header). */
+    private double duration;
 
     /**
-     * Constructs a Song object from a File and reads its metadata using jaudiotagger.
-     * If metadata is unavailable, defaults are used
-     * @param songFile the audio file
+     * Constructs a Song from an audio file and attempts to read its metadata.
+     * <ul>
+     *     <li>If metadata is available, the title and artist are populated from tags.</li>
+     *     <li>If metadata is missing or unreadable, defaults are used:
+     *         <ul>
+     *             <li>title = file name</li>
+     *             <li>artist = "unknown"</li>
+     *             <li>duration = 0</li>
+     *         </ul>
+     *     </li>
+     * </ul>
+     *
+     * @param songFile the audio file backing this {@code Song}
      */
     public Song(File songFile) {
         this.songFile = songFile;
 
-        // Default values in case metadata is not available
-        this.title = songFile.getName(); // fallback to filename
-        this.artist = "unknown";         // fallback artist
-        this.duration = 0;               // fallback duration
+        // Default fallbacks in case tag reading fails
+        this.title = songFile.getName();
+        this.artist = "unknown";
+        this.duration = 0;
 
         try {
-            // Read the audio file with jaudiotagger
+            // Use jaudiotagger to read metadata and audio header
             AudioFile audioFile = AudioFileIO.read(songFile);
             Tag tag = audioFile.getTag();
 
-            // If metadata tags exist, extract title and artist
+            // Extract basic tags if they exist
             if (tag != null) {
                 String tagTitle = tag.getFirst(FieldKey.TITLE);
                 String tagArtist = tag.getFirst(FieldKey.ARTIST);
 
-                if (tagTitle != null && !tagTitle.isEmpty()) this.title = tagTitle;
-                if (tagArtist != null && !tagArtist.isEmpty()) this.artist = tagArtist;
+                if (tagTitle != null && !tagTitle.isEmpty()) {
+                    this.title = tagTitle;
+                }
+                if (tagArtist != null && !tagArtist.isEmpty()) {
+                    this.artist = tagArtist;
+                }
             }
 
-            // Get the duration from the audio header (in seconds)
+            // Duration in seconds from the audio header
             this.duration = audioFile.getAudioHeader().getTrackLength();
 
         } catch (CannotReadException e) {
-            // File cannot be read as an audio file
+            // File exists but cannot be interpreted as an audio file
             System.out.println("Cannot read audio file: " + songFile.getName());
         } catch (Exception e) {
-            // General fallback for any other metadata reading issues
+            // Any other metadata-related errors
             System.out.println("Error reading metadata: " + e.getMessage());
         }
     }
 
-    // === Getters ===
-    public String getTitle() { return title; }       // Returns song title
-    public String getArtist() { return artist; }     // Returns artist name
-    public File getSongFile() { return songFile; }   // Returns original file
-    public double getDuration() { return duration; } // Returns duration in seconds
+    // ===================== GETTERS =====================
 
-    // === Setters ===
+    /** @return display title of this song. */
+    public String getTitle() { return title; }
+
+    /** @return artist name associated with this song. */
+    public String getArtist() { return artist; }
+
+    /** @return underlying audio file on disk. */
+    public File getSongFile() { return songFile; }
+
+    /** @return length of the track in seconds. */
+    public double getDuration() { return duration; }
+
+    // ===================== SETTERS =====================
+
+    /**
+     * Updates the artist name. This only affects the in-memory representation
+     * and does not write anything back to the file metadata.
+     *
+     * @param artist new artist name
+     */
     public void setArtist(String artist) { this.artist = artist; }
 
+    // ===================== OBJECT CONTRACT =====================
+
+    /**
+     * Returns a human-readable representation of this Song,
+     * used by UI components such as ListView.
+     *
+     * Format: {@code Title | Artist: X | Duration: N secs}
+     */
     @Override
     public String toString() {
-        // Formats song information for display: Title | Artist | Duration
         return String.format("%s | Artist: %s | Duration: %.0f secs", title, artist, duration);
     }
 
+    /**
+     * Two Song instances are considered equal if they refer to the same
+     * audio file on disk (based on canonical path, or absolute path as
+     * a fallback).
+     *
+     * This equality definition allows:
+     * <ul>
+     *     <li>Hash-based collections ({@link java.util.HashSet}) to treat
+     *         duplicate file references as the same logical song.</li>
+     *     <li>Managers like {@link MediaLibrary} and {@link PlaylistManager}
+     *         to de-duplicate songs by file path.</li>
+     * </ul>
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -83,11 +150,17 @@ public class Song {
             return this.songFile.getCanonicalPath()
                     .equals(other.songFile.getCanonicalPath());
         } catch (Exception e) {
+            // Fallback if canonical path cannot be resolved
             return this.songFile.getAbsolutePath()
                     .equals(other.songFile.getAbsolutePath());
         }
     }
 
+    /**
+     * Computes a hash code based on the file path used in {@link #equals(Object)}.
+     *
+     * @return hash code derived from canonical path, or absolute path on failure
+     */
     @Override
     public int hashCode() {
         try {

@@ -18,6 +18,9 @@
             <font>
                 <Font name="System Bold" size="24.0" />
             </font>
+         <VBox.margin>
+            <Insets />
+         </VBox.margin>
         </Label>
       <HBox alignment="CENTER" prefHeight="25.0" prefWidth="200.0">
          <children>
@@ -26,6 +29,9 @@
                     <ProgressBar fx:id="songProgressBar" layoutX="-1.0" minWidth="-Infinity" prefHeight="18.0" prefWidth="599.0" progress="0.0" />
                   <Slider fx:id="songProgressSlider" max="1.0" onMouseReleased="#seekTo" prefHeight="14.0" prefWidth="599.0" style="-fx-cursor: hand; -fx-blend-mode: overlay;" />
                </children>
+               <HBox.margin>
+                  <Insets top="10.0" />
+               </HBox.margin>
             </AnchorPane>
          </children>
       </HBox>

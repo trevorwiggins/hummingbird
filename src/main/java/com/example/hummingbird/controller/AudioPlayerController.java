@@ -1,7 +1,7 @@
 package com.example.hummingbird.controller;
 
 import com.example.hummingbird.model.*;
-import com.example.hummingbird.ui.AudioPlayerUI;
+import com.example.hummingbird.application.AudioPlayerApplication;
 
 import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
@@ -31,34 +31,60 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Controller for the Audio Player UI.
- * Handles playback, queue management, playlist display, and drag-and-drop functionality.
+ * Main controller for the audio player screen.
+ * <p>
+ * Responsibilities:
+ * <ul>
+ *     <li>Manage the playback queue (next/previous/play/pause/seek)</li>
+ *     <li>Display and switch between playlist library, songs in a playlist, and the active queue</li>
+ *     <li>Handle drag-and-drop reordering and context menu actions in the queue</li>
+ *     <li>Coordinate with PlaylistManager and QueueManager for data operations</li>
+ * </ul>
  */
 public class AudioPlayerController implements Initializable {
 
-    // === MANAGERS ===
-    private PlaylistManager playlistManager;  // Manages playlists and songs
-    private QueueManager queueManager;       // Manages current playback queue
+    // ===================== MANAGERS & MODEL STATE =====================
 
-    // === MEDIA PLAYER ===
-    private Media media;                     // Currently loaded media
-    private MediaPlayer mediaPlayer;         // JavaFX MediaPlayer for playback
-    private boolean userIsSeeking;           // Flag to prevent slider conflicts during seeking
+    /** Provides access to all playlists and songs for the current user. */
+    private PlaylistManager playlistManager;
 
-    // === FILE DIRECTORY ===
-    private File directory;                  // Base directory for user playlists
+    /** Keeps track of the current playback queue and current song. */
+    private QueueManager queueManager;
 
-    // === UI STATE PROPERTIES ===
-    private StringProperty listViewMode = new SimpleStringProperty("playlists"); // Tracks current ListView mode: playlists, songs, or queue
-    private BooleanProperty queueCreated = new SimpleBooleanProperty(false);     // True if there is at least one song in the queue
+    /** Currently loaded media file. */
+    private Media media;
 
-    // === FXML UI COMPONENTS ===
-    @FXML private Label songLabel;           // Displays currently playing song
-    @FXML private Label infoLabel1;          // Context info label (e.g., "Current mode:")
-    @FXML private Label infoLabel2;          // Context info label (e.g., playlist/queue name)
+    /** JavaFX media player instance used to play the current song. */
+    private MediaPlayer mediaPlayer;
 
-    @FXML private ProgressBar songProgressBar; // Visual playback progress
-    @FXML private Slider songProgressSlider;   // User-controlled slider for seeking
+    /**
+     * True while the user is actively dragging the progress slider.
+     * Prevents auto-updates from fighting user input.
+     */
+    private boolean userIsSeeking;
+
+    /** Base directory where this user's playlists are stored on disk. */
+    private File directory;
+
+    /**
+     * Current mode of the ListView:
+     * "playlists" = showing playlist names,
+     * "songs" = showing songs from a specific playlist,
+     * "queue" = showing the active playback queue.
+     */
+    private StringProperty listViewMode = new SimpleStringProperty("playlists");
+
+    /** True whenever there is at least one song in the queue. */
+    private BooleanProperty queueCreated = new SimpleBooleanProperty(false);
+
+    // ===================== FXML-INJECTED UI CONTROLS =====================
+
+    @FXML private Label songLabel;
+    @FXML private Label infoLabel1;
+    @FXML private Label infoLabel2;
+
+    @FXML private ProgressBar songProgressBar;
+    @FXML private Slider songProgressSlider;
 
     @FXML private Button nextButton;
     @FXML private Button playbackButton;
@@ -69,96 +95,138 @@ public class AudioPlayerController implements Initializable {
     @FXML private Button queueDisplayButton;
     @FXML private Button queueSelectedPlaylistButton;
     @FXML private Button openSelectedPlaylistButton;
-    @FXML private Button clearQueueButton;    // Enabled only if queue exists
+    @FXML private Button clearQueueButton;
 
-    @FXML private Slider volumeSlider;         // Volume control
+    @FXML private Slider volumeSlider;
 
-    @FXML private ListView<String> mediaListView; // Displays playlists, songs, or queue depending on mode
+    /**
+     * Displays one of:
+     * <ul>
+     *     <li>Playlist titles (playlist mode)</li>
+     *     <li>Songs inside a single playlist (songs mode)</li>
+     *     <li>Song titles from the active queue (queue mode)</li>
+     * </ul>
+     */
+    @FXML private ListView<String> mediaListView;
 
-    // === PLAYBACK CONTROL METHODS ===
+    // ===================== BASIC PLAYBACK CONTROLS =====================
 
+    /**
+     * Play/Pause button handler.
+     * Toggles playback based on the button's current text.
+     */
     @FXML
     void playback(ActionEvent event) {
-        // Check current text of the button to determine state
         if ("PLAY".equals(playbackButton.getText())) {
-            // If button says "Play", start playback
-            startPlayback();                        // Call existing startPlayback method
-            playbackButton.setText("PAUSE");        // Update button text to indicate next action
+            startPlayback();
+            playbackButton.setText("PAUSE");
         } else {
-            // Otherwise, button says "Pause", so stop playback
-            stopPlayback();                         // Call existing stopPlayback method
-            playbackButton.setText("PLAY");         // Update button text back to Play
+            stopPlayback();
+            playbackButton.setText("PLAY");
         }
     }
 
-    /** Starts playback of current media, setting volume from slider */
+    /**
+     * Starts playback of the currently loaded song.
+     * Volume is taken from the volume slider (0 – 100%).
+     */
     private void startPlayback() {
         if (mediaPlayer == null) return;
         mediaPlayer.setVolume(volumeSlider.getValue() * 0.01);
         mediaPlayer.play();
     }
 
-    /** Pauses current playback */
+    /**
+     * Pauses the current song if a MediaPlayer exists.
+     */
     private void stopPlayback() {
         if (mediaPlayer != null) mediaPlayer.pause();
     }
 
-    /** Skips to next song in queue */
+    /**
+     * Button handler to skip to the next song in the queue.
+     */
     @FXML
-    void queueNextSong(ActionEvent event) { nextSong(); }
+    void queueNextSong(ActionEvent event) {
+        nextSong();
+    }
 
-    /** Internal method to advance to the next song and update UI */
+    /**
+     * Moves the queue forward one song and refreshes the UI.
+     * Does nothing if the queue is empty or not initialized.
+     */
     private void nextSong() {
         if (queueManager == null || queueManager.isEmpty()) return;
         queueManager.nextSong();
         updateUI();
     }
 
-    /** Skips to previous song in queue */
+    /**
+     * Button handler to go back to the previous song in the queue.
+     */
     @FXML
-    void queuePrevSong(ActionEvent event) { previousSong(); }
+    void queuePrevSong(ActionEvent event) {
+        previousSong();
+    }
 
-    /** Internal method to go to previous song and update UI */
+    /**
+     * Moves the queue backward one song and refreshes the UI.
+     * Does nothing if the queue is empty or not initialized.
+     */
     public void previousSong() {
         if (queueManager == null || queueManager.isEmpty()) return;
         queueManager.prevSong();
         updateUI();
     }
 
-    /** Updates the UI and MediaPlayer to reflect the current song in queue */
+    /**
+     * Updates the MediaPlayer and UI labels to reflect the currently
+     * selected song in the queue. Also starts playback of that song.
+     * <p>
+     * If there is no current song, queue state is reset.
+     */
     public void updateUI() {
         Song current = (queueManager != null) ? queueManager.getCurrentSong() : null;
 
         if (current == null) {
-            // If no song, disable queue-related features
             queueCreated.set(false);
             return;
         }
 
-        // Dispose of previous media player to avoid resource leaks
+        // Clean up existing player to avoid resource leaks
         if (mediaPlayer != null) {
-            try { mediaPlayer.stop(); mediaPlayer.dispose(); } catch (Exception ignored) {}
+            try {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+            } catch (Exception ignored) {}
         }
 
-        // Load the current song into MediaPlayer
+        // Create a new player for the new current song
         media = new Media(current.getSongFile().toURI().toString());
         mediaPlayer = new MediaPlayer(media);
 
-        // Only display the song's title, not full file info
         songLabel.setText(current.getTitle());
         mediaPlayer.setVolume(volumeSlider.getValue() * 0.01);
 
         attachMediaPlayListeners();
         mediaPlayer.play();
+
+        playbackButton.setText("PAUSE");
     }
 
-    // === LISTVIEW MODES ===
+    // ===================== LISTVIEW MODE MANAGEMENT =====================
 
-    /** Switch UI to playlist mode */
+    /**
+     * Button handler to show playlist library names in the ListView.
+     */
     @FXML
-    void playlistMode(ActionEvent event) { listViewMode.set("playlists"); }
+    void playlistMode(ActionEvent event) {
+        listViewMode.set("playlists");
+    }
 
-    /** Populate ListView with playlists */
+    /**
+     * Populates the ListView with all playlist names from the PlaylistManager.
+     */
     private void displayPlaylists() {
         mediaListView.getItems().clear();
         infoLabel1.setText("Current mode:");
@@ -169,11 +237,18 @@ public class AudioPlayerController implements Initializable {
         }
     }
 
-    /** Switch UI to queue mode */
+    /**
+     * Button handler to show the active queue in the ListView.
+     */
     @FXML
-    void queueMode(ActionEvent event) { listViewMode.set("queue"); }
+    void queueMode(ActionEvent event) {
+        listViewMode.set("queue");
+    }
 
-    /** Populate ListView with queue items and enable drag-and-drop reordering */
+    /**
+     * Populates the ListView with song titles from the current queue and
+     * enables drag-and-drop reordering for queue items.
+     */
     private void displayQueue() {
         mediaListView.getItems().clear();
         infoLabel1.setText("Current mode:");
@@ -181,27 +256,36 @@ public class AudioPlayerController implements Initializable {
 
         if (queueManager != null) {
             for (Song song : queueManager.getQueue()) {
-                // Only show song title in queue list
                 mediaListView.getItems().add(song.getTitle());
             }
             enableQueueDragAndDrop();
         }
     }
 
+    // ===================== VIEW SWITCHING TO PLAYLIST MANAGER =====================
+
+    /**
+     * Switches from the player view back to the playlist manager view.
+     * Reuses the existing Stage and passes the current PlaylistManager instance
+     * to the PlaylistManagerController.
+     */
     @FXML
     void loadPlaylistManagerView(ActionEvent event) {
         try {
             Stage thisCurrentStage = (Stage) viewSwitchToPlaylistsButton.getScene().getWindow();
-            FXMLLoader fxmlLoader = new FXMLLoader(AudioPlayerUI.class.getResource("/com/example/hummingbird/playlist_manager_view.fxml"));
+            FXMLLoader fxmlLoader = new FXMLLoader(
+                    AudioPlayerApplication.class.getResource("/com/example/hummingbird/playlist_manager_view.fxml")
+            );
             Scene scene = new Scene(fxmlLoader.load(), 900, 800);
 
             PlaylistManagerController pmController = fxmlLoader.getController();
-            // Pass the PlaylistManager
             pmController.setPlaylistManager(this.playlistManager);
 
             thisCurrentStage.setTitle("Hummingbird - Playlist Manager");
             thisCurrentStage.setScene(scene);
             thisCurrentStage.show();
+
+            // Stop and dispose any currently playing media when leaving this view
             if (mediaPlayer != null) {
                 mediaPlayer.stop();
                 mediaPlayer.dispose();
@@ -212,7 +296,16 @@ public class AudioPlayerController implements Initializable {
         }
     }
 
-    /** Queue all songs from the selected playlist (metadata-aware duplicate prevention) */
+    // ===================== QUEUE MANAGEMENT =====================
+
+    /**
+     * Adds all songs from the selected playlist into the queue.
+     * <ul>
+     *     <li>Shows a warning if no playlist is selected.</li>
+     *     <li>Creates a MediaPlayer for the first song if none exists.</li>
+     *     <li>Switches the ListView into queue mode afterward.</li>
+     * </ul>
+     */
     @FXML
     void queueSelectedPlaylist(ActionEvent event) {
         SelectionModel<String> selectionModel = mediaListView.getSelectionModel();
@@ -230,12 +323,11 @@ public class AudioPlayerController implements Initializable {
         if (selectedPlaylist == null || selectedPlaylist.isEmpty()) return;
 
         MediaLibrary library = playlistManager.getMediaLibrary();
-
         queueManager.addPlaylistToQueue(selectedPlaylist, library);
 
         queueCreated.set(!queueManager.isEmpty());
 
-        // ✅ fixed block here
+        // If this is the first time a queue has been created, set up the first song.
         if (mediaPlayer == null && !queueManager.isEmpty()) {
             Song first = queueManager.getCurrentSong();
             if (first == null && !queueManager.getQueue().isEmpty()) {
@@ -247,29 +339,39 @@ public class AudioPlayerController implements Initializable {
                 mediaPlayer = new MediaPlayer(media);
                 songLabel.setText(first.getTitle());
                 attachMediaPlayListeners();
-                mediaPlayer.pause();  // or .play();
+                // Start in paused state so user explicitly chooses to play
+                mediaPlayer.pause();
             }
         }
 
         displayQueue();
     }
 
-    /** Switch to songs mode and display songs from selected playlist */
+    /**
+     * Button handler to open a selected playlist and show its songs.
+     * If nothing is selected, a warning dialog is shown.
+     */
     @FXML
     void songsMode(ActionEvent event) {
         var selection = mediaListView.getSelectionModel().getSelectedItem();
         if (selection != null) {
             listViewMode.set("songs");
             displaySongs(selection);
-        }
-        else {
-            Platform.runLater(() -> {
-                showWarning("No Playlist Selected", "Please select a playlist to open.");
-            });
+        } else {
+            Platform.runLater(() ->
+                    showWarning("No Playlist Selected", "Please select a playlist to open.")
+            );
         }
     }
 
-    /** Display songs in a playlist, add context menu for adding individual songs to queue */
+    /**
+     * Displays all songs inside the given playlist in the ListView.
+     * <ul>
+     *     <li>Each item uses Song.toString() for full info.</li>
+     *     <li>Right-click context menu allows adding individual songs to the queue.</li>
+     *     <li>Duplicates in the queue are prevented.</li>
+     * </ul>
+     */
     private void displaySongs(String name) {
         infoLabel1.setText("Current playlist:");
         infoLabel2.setText(name);
@@ -279,11 +381,10 @@ public class AudioPlayerController implements Initializable {
         if (songs == null) return;
 
         for (Song song : songs) {
-            // Show full file information
             mediaListView.getItems().add(song.toString());
         }
 
-        // === CONTEXT MENU: Add to Queue ===
+        // Each cell gets a context menu with "Add to Queue"
         mediaListView.setCellFactory(lv -> {
             ListCell<String> cell = new ListCell<>() {
                 @Override
@@ -301,16 +402,17 @@ public class AudioPlayerController implements Initializable {
                 if (idx >= 0 && idx < songs.size()) {
                     Song selectedSong = playlistManager.getSongFromPlaylist(name, idx);
 
-                    // Prevent duplicates in queue
+                    // Prevent the same Song instance from being added twice to the queue
                     if (queueManager.getQueue().contains(selectedSong)) {
-                        showWarning("Cannot add song to queue", "Song already in queue: " + selectedSong.getTitle());
+                        showWarning("Cannot add song to queue",
+                                "Song already in queue: " + selectedSong.getTitle());
                         return;
                     }
 
                     queueManager.addSong(selectedSong, playlistManager.getMediaLibrary());
                     queueCreated.set(true);
 
-                    // Initialize player for first song if needed
+                    // If this is the very first song in the queue, set up a MediaPlayer for it
                     if (queueManager.getQueueSize() == 1) {
                         media = new Media(selectedSong.getSongFile().toURI().toString());
                         mediaPlayer = new MediaPlayer(media);
@@ -330,7 +432,14 @@ public class AudioPlayerController implements Initializable {
         });
     }
 
-    /** Clears the current queue, disables playback buttons, and resets UI */
+    /**
+     * Clears the current queue and resets the player UI to the initial state.
+     * <ul>
+     *     <li>Stops and disposes the MediaPlayer.</li>
+     *     <li>Returns the ListView to playlist mode.</li>
+     *     <li>Resets labels, buttons, and progress indicators.</li>
+     * </ul>
+     */
     @FXML
     void clearQueue(ActionEvent event) {
         if (queueManager != null) queueManager.clearQueue();
@@ -338,7 +447,10 @@ public class AudioPlayerController implements Initializable {
         queueCreated.set(false);
 
         if (mediaPlayer != null) {
-            try { mediaPlayer.stop(); mediaPlayer.dispose(); } catch (Exception ignored) {}
+            try {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+            } catch (Exception ignored) {}
             mediaPlayer = null;
         }
 
@@ -350,15 +462,21 @@ public class AudioPlayerController implements Initializable {
         playbackButton.setText("PLAY");
     }
 
-    // === MEDIA PLAYER EVENT HANDLERS ===
+    // ===================== MEDIA PLAYER EVENT WIRES =====================
 
-    /** Attaches listeners for progress updates and song end events */
+    /**
+     * Hooks up listeners to the MediaPlayer:
+     * <ul>
+     *     <li>Updates progress bar and slider while the song plays.</li>
+     *     <li>Automatically advances to the next song when the current one ends.</li>
+     * </ul>
+     */
     private void attachMediaPlayListeners() {
         if (mediaPlayer == null) return;
 
-        // Update progress bar/slider as song plays
+        // Update UI as playback time changes
         mediaPlayer.currentTimeProperty().addListener((obs, oldTime, newTime) -> {
-            if (userIsSeeking) return; // Skip if user is actively moving slider
+            if (userIsSeeking) return;
             if (mediaPlayer == null) return;
 
             if (mediaPlayer.getTotalDuration() != null &&
@@ -370,7 +488,7 @@ public class AudioPlayerController implements Initializable {
             }
         });
 
-        // Advance to next song automatically
+        // When a song finishes, move to the next song in the queue
         mediaPlayer.setOnEndOfMedia(() -> {
             if (queueManager != null && !queueManager.isEmpty()) {
                 queueManager.nextSong();
@@ -379,21 +497,40 @@ public class AudioPlayerController implements Initializable {
         });
     }
 
-    /** Seek to a specific position in the current song */
+    /**
+     * Called when the user clicks on the progress slider.
+     * Jumps playback to a new position in the song based on slider value.
+     */
     @FXML
     void seekTo(MouseEvent event) {
         if (media == null || mediaPlayer == null) return;
-        mediaPlayer.seek(Duration.millis(truncateDouble(songProgressSlider.getValue()) * media.getDuration().toMillis()));
+        mediaPlayer.seek(Duration.millis(
+                truncateDouble(songProgressSlider.getValue()) * media.getDuration().toMillis()
+        ));
     }
 
-    /** Truncate a double to 2 decimal places (used for slider precision) */
+    /**
+     * Utility used to limit slider value precision.
+     *
+     * @param value original double
+     * @return value truncated down to 2 decimal places
+     */
     public double truncateDouble(double value) {
-        return new BigDecimal(value).setScale(2, RoundingMode.DOWN).doubleValue();
+        return new BigDecimal(value)
+                .setScale(2, RoundingMode.DOWN)
+                .doubleValue();
     }
 
-    // === DRAG AND DROP QUEUE MANAGEMENT ===
+    // ===================== DRAG & DROP QUEUE REORDERING =====================
 
-    /** Enables drag-and-drop reordering and context menu operations in the queue view */
+    /**
+     * Configures the ListView cells for queue mode to support:
+     * <ul>
+     *     <li>Right-click context menu (Move to Top/Bottom, Remove)</li>
+     *     <li>Drag-and-drop reordering of songs inside the queue</li>
+     * </ul>
+     * Does nothing if the ListView is not in "queue" mode.
+     */
     private void enableQueueDragAndDrop() {
         if (!"queue".equals(listViewMode.get())) return;
 
@@ -406,7 +543,7 @@ public class AudioPlayerController implements Initializable {
                 }
             };
 
-            // Context menu for queue management
+            // Context menu options
             ContextMenu contextMenu = new ContextMenu();
             MenuItem moveTop = new MenuItem("Move to Top");
             MenuItem moveBottom = new MenuItem("Move to Bottom");
@@ -419,7 +556,7 @@ public class AudioPlayerController implements Initializable {
             contextMenu.getItems().addAll(moveTop, moveBottom, remove);
             cell.setContextMenu(contextMenu);
 
-            // Drag events
+            // Drag start: store index being dragged
             cell.setOnDragDetected(event -> {
                 if (!cell.isEmpty()) {
                     Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);
@@ -430,6 +567,7 @@ public class AudioPlayerController implements Initializable {
                 }
             });
 
+            // Drag over: allow moving items over other cells
             cell.setOnDragOver(event -> {
                 if (event.getGestureSource() != cell && event.getDragboard().hasString()) {
                     event.acceptTransferModes(TransferMode.MOVE);
@@ -437,6 +575,7 @@ public class AudioPlayerController implements Initializable {
                 event.consume();
             });
 
+            // Drop: actually move the item in the queue and refresh UI
             cell.setOnDragDropped(event -> {
                 Dragboard db = event.getDragboard();
                 if (db.hasString()) {
@@ -452,21 +591,33 @@ public class AudioPlayerController implements Initializable {
         });
     }
 
-    /** Moves a song in the queue from one index to another */
+    /**
+     * Moves a song inside the queue from one index to another
+     * and refreshes the ListView display.
+     */
     private void moveQueueItem(int fromIndex, int toIndex) {
         queueManager.moveSong(fromIndex, toIndex);
-        displayQueue(); // Refresh UI after move
+        displayQueue();
     }
 
-    /** Removes a song from the queue */
+    /**
+     * Removes a song at the given index from the queue.
+     * If the queue becomes empty, queueCreated is reset.
+     */
     private void removeQueueItem(int index) {
         Song song = queueManager.getQueue().get(index);
         queueManager.removeSong(song);
 
-        if (queueManager.isEmpty()) queueCreated.set(false); // Disable Clear Queue if empty
+        if (queueManager.isEmpty()) queueCreated.set(false);
         displayQueue();
     }
 
+    /**
+     * Convenience helper to show a simple warning dialog.
+     *
+     * @param title   dialog title
+     * @param message dialog message body
+     */
     private void showWarning(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle(title);
@@ -475,47 +626,86 @@ public class AudioPlayerController implements Initializable {
         alert.showAndWait();
     }
 
-    // === INITIALIZATION ===
+    // ===================== INITIALIZATION / SETUP =====================
+
+    /**
+     * Called automatically after FXML loading is complete.
+     * Sets up:
+     * <ul>
+     *     <li>User-specific playlist directory</li>
+     *     <li>PlaylistManager and QueueManager</li>
+     *     <li>Initial button states and bindings</li>
+     *     <li>Mode listeners (playlists / queue / songs)</li>
+     *     <li>Volume and seek slider behavior</li>
+     *     <li>Initial ListView content (playlist library)</li>
+     * </ul>
+     */
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        // No queue exists initially
         queueCreated.set(false);
 
-        // Load playlist directory and initialize managers
-        directory = new File("users/test_user1/playlists");
+        // Retrieve logged-in user's directory from the shared session
+        UserSession session = UserSession.getInstance();
+        File userDir = session.getUserDirectory();
+
+        // Fallback if initialize is somehow hit without a valid login
+        if (userDir == null) {
+            System.err.println("WARNING: No user logged in in UserSession. Falling back to test_user1.");
+            userDir = new File("users/test_user1");
+        }
+
+        // This user's playlists live under "<userDir>/playlists"
+        directory = new File(userDir, "playlists");
+
+        if (!directory.exists()) {
+            boolean created = directory.mkdirs();
+            if (!created) {
+                System.err.println("ERROR: Could not create playlist directory: " + directory.getAbsolutePath());
+            }
+        }
+
+        // Core model management objects for this view
         playlistManager = new PlaylistManager(directory);
         queueManager = new QueueManager();
 
-        // Disable playback buttons until a queue exists
+        // Initially, playback controls are disabled until a queue exists
         prevButton.setDisable(true);
         playbackButton.setDisable(true);
         nextButton.setDisable(true);
         playbackButton.setText("PLAY");
 
-        // Clear queue button only enabled when queue exists
+        // Clear Queue button only works while a queue exists
         clearQueueButton.disableProperty().bind(queueCreated.not());
 
-        songLabel.setText("Please create a queue from the Playlist library below");
+        // Friendly greeting depending on whether we know the username
+        String username = session.getUsername();
+        if (username != null) {
+            songLabel.setText("Welcome " + username + ", create a queue from the Playlist library below");
+        } else {
+            songLabel.setText("Please create a queue from the Playlist library below");
+        }
 
-        // Update playback button states whenever queueCreated changes
+        // Enable/disable playback controls whenever queue existence changes
         queueCreated.addListener((obs, oldVal, newVal) -> {
             prevButton.setDisable(!newVal);
             playbackButton.setDisable(!newVal);
             nextButton.setDisable(!newVal);
 
-            if (!newVal) songLabel.setText("Please select a playlist from the Playlist library below");
+            if (!newVal) {
+                songLabel.setText("Please select a playlist from the Playlist library below");
+            }
         });
 
-        // Initialize ListView mode to playlists
+        // Start in playlist library mode
         listViewMode.set("playlists");
 
-        // Listen for mode changes to update UI
+        // Respond to mode changes by updating cell factories and content
         listViewMode.addListener((obs, oldVal, newVal) -> {
             switch (newVal) {
                 case "playlists" -> {
                     openSelectedPlaylistButton.setDisable(false);
                     queueSelectedPlaylistButton.setDisable(false);
-                    mediaListView.setCellFactory(lv -> new ListCell<>() { // reset factory
+                    mediaListView.setCellFactory(lv -> new ListCell<>() {
                         @Override
                         protected void updateItem(String item, boolean empty) {
                             super.updateItem(item, empty);
@@ -543,32 +733,40 @@ public class AudioPlayerController implements Initializable {
             }
         });
 
-        // Volume slider listener
+        // Keep the MediaPlayer's volume in sync with the volume slider
         volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            if (mediaPlayer != null) mediaPlayer.setVolume(newVal.doubleValue() * 0.01);
-        });
-
-        // Slider seeking logic
-        songProgressSlider.valueChangingProperty().addListener((obs, was, isChanging) -> {
-            userIsSeeking = isChanging;
-            if (!isChanging && media != null && mediaPlayer != null) {
-                mediaPlayer.seek(Duration.millis(songProgressSlider.getValue() * media.getDuration().toMillis()));
+            if (mediaPlayer != null) {
+                mediaPlayer.setVolume(newVal.doubleValue() * 0.01);
             }
         });
 
+        // When the user drags the progress slider, we mark that as "seeking"
+        songProgressSlider.valueChangingProperty().addListener((obs, was, isChanging) -> {
+            userIsSeeking = isChanging;
+            if (!isChanging && media != null && mediaPlayer != null) {
+                mediaPlayer.seek(Duration.millis(
+                        songProgressSlider.getValue() * media.getDuration().toMillis()
+                ));
+            }
+        });
+
+        // Mouse press/release on the slider also control the seeking flag
         songProgressSlider.setOnMousePressed(event -> userIsSeeking = true);
         songProgressSlider.setOnMouseReleased(event -> {
             userIsSeeking = false;
             if (media != null && mediaPlayer != null) {
-                mediaPlayer.seek(Duration.millis(songProgressSlider.getValue() * media.getDuration().toMillis()));
+                mediaPlayer.seek(Duration.millis(
+                        songProgressSlider.getValue() * media.getDuration().toMillis()
+                ));
             }
         });
 
-        // Display playlists initially
+        // Initial view: show all playlists for this user
         displayPlaylists();
 
-        // No MediaPlayer is created initially
+        // No song or MediaPlayer is set up until the user creates a queue
         media = null;
         mediaPlayer = null;
     }
+
 }
