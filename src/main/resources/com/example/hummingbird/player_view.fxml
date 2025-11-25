@@ -16,7 +16,7 @@
     <children>
         <Label fx:id="songLabel" text="SONG NAME WILL DISPLAY HERE" textAlignment="CENTER">
             <font>
-                <Font size="24.0" />
+                <Font name="System Bold" size="24.0" />
             </font>
         </Label>
       <HBox alignment="CENTER" prefHeight="25.0" prefWidth="200.0">
@@ -44,17 +44,17 @@
       <Line endX="270.0" fill="#6e6e6e" startX="-400.0" stroke="#6e6e6e" strokeWidth="5.0" />
       <HBox alignment="CENTER" prefHeight="40.0">
          <children>
-            <Button fx:id="playlistsDisplayButton" minWidth="90.0" mnemonicParsing="false" onAction="#playlistMode" style="-fx-cursor: hand;" text="Playlists">
+            <Button fx:id="playlistsDisplayButton" minWidth="110.0" mnemonicParsing="false" onAction="#playlistMode" style="-fx-cursor: hand;" text="Playlists">
                <HBox.margin>
                   <Insets right="5.0" />
                </HBox.margin>
             </Button>
-            <Button fx:id="queueDisplayButton" minWidth="90.0" mnemonicParsing="false" onAction="#queueMode" style="-fx-cursor: hand;" text="Queue">
+            <Button fx:id="queueDisplayButton" minWidth="110.0" mnemonicParsing="false" onAction="#queueMode" style="-fx-cursor: hand;" text="Queue">
                <HBox.margin>
                   <Insets left="5.0" right="5.0" />
                </HBox.margin>
             </Button>
-            <Button fx:id="importMP3Button" minWidth="90.0" mnemonicParsing="false" onAction="#importMP3" style="-fx-cursor: hand;" text="Import MP3">
+            <Button fx:id="viewSwitchToPlaylistsButton" minWidth="110.0" mnemonicParsing="false" onAction="#loadPlaylistManagerView" style="-fx-cursor: hand;" text="Manage Playlists">
                <HBox.margin>
                   <Insets left="5.0" />
                </HBox.margin>
@@ -70,8 +70,14 @@
                <padding>
                   <Insets right="5.0" />
                </padding>
+               <font>
+                  <Font name="System Bold" size="12.0" />
+               </font>
             </Label>
-            <Label fx:id="infoLabel2" text="Second Info Label" />
+            <Label fx:id="infoLabel2" text="Second Info Label">
+               <font>
+                  <Font name="System Bold" size="12.0" />
+               </font></Label>
          </children>
       </HBox>
       <ListView fx:id="mediaListView" maxWidth="800.0" minWidth="600.0">

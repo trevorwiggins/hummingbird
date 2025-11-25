@@ -71,4 +71,29 @@ public class Song {
         // Formats song information for display: Title | Artist | Duration
         return String.format("%s | Artist: %s | Duration: %.0f secs", title, artist, duration);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Song)) return false;
+
+        Song other = (Song) o;
+
+        try {
+            return this.songFile.getCanonicalPath()
+                    .equals(other.songFile.getCanonicalPath());
+        } catch (Exception e) {
+            return this.songFile.getAbsolutePath()
+                    .equals(other.songFile.getAbsolutePath());
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        try {
+            return this.songFile.getCanonicalPath().hashCode();
+        } catch (Exception e) {
+            return this.songFile.getAbsolutePath().hashCode();
+        }
+    }
 }

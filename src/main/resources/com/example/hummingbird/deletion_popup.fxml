@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/25"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.hummingbird.controller.DeletionPopupController"
+      alignment="CENTER"
+      spacing="15"
+      prefWidth="300" prefHeight="150"
+      style="-fx-background-color: white; -fx-border-color: black; -fx-border-width: 2px;">
+    <children>
+        <ProgressIndicator fx:id="progressIndicator"/>
+        <Label fx:id="statusLabel" text="Deleting..."/>
+    </children>
+</VBox>

@@ -20,13 +20,39 @@ public class QueueManager {
      * If this is the first song added, sets it as the current song.
      * @param song Song to add (ignored if null)
      */
-    public void addSong(Song song) {
-        if (song == null) return;
-        queue.add(song);
+    /**
+     * Adds a song to the end of the queue using canonical instance from MediaLibrary.
+     * Prevents duplicates entirely (by canonical file).
+     */
+    public void addSong(Song song, MediaLibrary mediaLibrary) {
+        if (song == null || mediaLibrary == null) return;
 
-        // If this is the first song added, set index to 0
+        // Get canonical instance
+        Song canonical = mediaLibrary.getSongByFile(song.getSongFile());
+        if (canonical == null) canonical = song;
+
+        // Use final local variable for lambda
+        Song canonicalSong = canonical;
+
+        // Prevent duplicates
+        if (queue.stream().anyMatch(s -> s.equals(canonicalSong))) return;
+
+        queue.add(canonicalSong);
+
         if (index == -1) index = 0;
     }
+
+    public void addPlaylistToQueue(List<Song> songs, MediaLibrary mediaLibrary) {
+        if (songs == null || mediaLibrary == null) return;
+
+        for (Song s : songs) {
+            // This call already:
+            //   - canonicalizes the Song
+            //   - skips it if an equal Song is already in the queue
+            addSong(s, mediaLibrary);
+        }
+    }
+
 
     /**
      * Returns the current song in the queue.
@@ -153,15 +179,5 @@ public class QueueManager {
             // Removed the currently playing song
             if (index >= queue.size()) index = queue.size() - 1; // move to last song if needed
         }
-    }
-
-    /**
-     * Removes a song from the queue by its index.
-     * @param indexToRemove index of song to remove
-     */
-    public void removeSong(int indexToRemove) {
-        if (indexToRemove < 0 || indexToRemove >= queue.size()) return;
-        Song song = queue.get(indexToRemove);
-        removeSong(song); // reuse removal logic
     }
 }

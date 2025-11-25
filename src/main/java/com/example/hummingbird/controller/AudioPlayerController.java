@@ -10,7 +10,9 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
@@ -18,14 +20,12 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -37,7 +37,7 @@ import java.math.RoundingMode;
 public class AudioPlayerController implements Initializable {
 
     // === MANAGERS ===
-    private PlaylistManager playlistManager; // Manages playlists and songs
+    private PlaylistManager playlistManager;  // Manages playlists and songs
     private QueueManager queueManager;       // Manages current playback queue
 
     // === MEDIA PLAYER ===
@@ -63,7 +63,7 @@ public class AudioPlayerController implements Initializable {
     @FXML private Button nextButton;
     @FXML private Button playbackButton;
     @FXML private Button prevButton;
-    @FXML private Button importMP3Button;
+    @FXML private Button viewSwitchToPlaylistsButton;
 
     @FXML private Button playlistsDisplayButton;
     @FXML private Button queueDisplayButton;
@@ -162,7 +162,7 @@ public class AudioPlayerController implements Initializable {
     private void displayPlaylists() {
         mediaListView.getItems().clear();
         infoLabel1.setText("Current mode:");
-        infoLabel2.setText("Library view");
+        infoLabel2.setText("Playlist Library view");
 
         for (String name : playlistManager.getAllPlaylistNames()) {
             mediaListView.getItems().add(name);
@@ -188,37 +188,70 @@ public class AudioPlayerController implements Initializable {
         }
     }
 
+    @FXML
+    void loadPlaylistManagerView(ActionEvent event) {
+        try {
+            Stage thisCurrentStage = (Stage) viewSwitchToPlaylistsButton.getScene().getWindow();
+            FXMLLoader fxmlLoader = new FXMLLoader(AudioPlayerUI.class.getResource("/com/example/hummingbird/playlist_manager_view.fxml"));
+            Scene scene = new Scene(fxmlLoader.load(), 900, 800);
+
+            PlaylistManagerController pmController = fxmlLoader.getController();
+            // Pass the PlaylistManager
+            pmController.setPlaylistManager(this.playlistManager);
+
+            thisCurrentStage.setTitle("Hummingbird - Playlist Manager");
+            thisCurrentStage.setScene(scene);
+            thisCurrentStage.show();
+            if (mediaPlayer != null) {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+                mediaPlayer = null;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /** Queue all songs from the selected playlist (metadata-aware duplicate prevention) */
     @FXML
     void queueSelectedPlaylist(ActionEvent event) {
         SelectionModel<String> selectionModel = mediaListView.getSelectionModel();
-        if (selectionModel.getSelectedItem() == null) return;
+        if (selectionModel.getSelectedItem() == null) {
+            Platform.runLater(() ->
+                    showWarning("No Playlist Selected", "Please select a playlist to queue it.")
+            );
+            return;
+        }
 
         String selectedPlaylistName = selectionModel.getSelectedItem();
         listViewMode.set("queue");
 
         List<Song> selectedPlaylist = playlistManager.getPlaylist(selectedPlaylistName);
+        if (selectedPlaylist == null || selectedPlaylist.isEmpty()) return;
 
-        // Add songs only if they are not already in the queue
-        for (Song song : selectedPlaylist) {
-            if (!queueManager.getQueue().contains(song)) {
-                queueManager.addSong(song);
-            }
-        }
+        MediaLibrary library = playlistManager.getMediaLibrary();
+
+        queueManager.addPlaylistToQueue(selectedPlaylist, library);
 
         queueCreated.set(!queueManager.isEmpty());
 
-        // Prepare MediaPlayer with first song in the queue
-        Song first = queueManager.getCurrentSong();
-        if (first != null) {
-            media = new Media(first.getSongFile().toURI().toString());
-            mediaPlayer = new MediaPlayer(media);
-            songLabel.setText(first.getTitle()); // Only title shown
-            attachMediaPlayListeners();
-            mediaPlayer.pause();
+        // ✅ fixed block here
+        if (mediaPlayer == null && !queueManager.isEmpty()) {
+            Song first = queueManager.getCurrentSong();
+            if (first == null && !queueManager.getQueue().isEmpty()) {
+                first = queueManager.getQueue().get(0);
+            }
+
+            if (first != null) {
+                media = new Media(first.getSongFile().toURI().toString());
+                mediaPlayer = new MediaPlayer(media);
+                songLabel.setText(first.getTitle());
+                attachMediaPlayListeners();
+                mediaPlayer.pause();  // or .play();
+            }
         }
 
-        displayQueue(); // Show updated queue immediately
+        displayQueue();
     }
 
     /** Switch to songs mode and display songs from selected playlist */
@@ -228,6 +261,11 @@ public class AudioPlayerController implements Initializable {
         if (selection != null) {
             listViewMode.set("songs");
             displaySongs(selection);
+        }
+        else {
+            Platform.runLater(() -> {
+                showWarning("No Playlist Selected", "Please select a playlist to open.");
+            });
         }
     }
 
@@ -263,25 +301,24 @@ public class AudioPlayerController implements Initializable {
                 if (idx >= 0 && idx < songs.size()) {
                     Song selectedSong = playlistManager.getSongFromPlaylist(name, idx);
 
-                    // Metadata-aware duplicate prevention
+                    // Prevent duplicates in queue
                     if (queueManager.getQueue().contains(selectedSong)) {
-                        System.out.println("Song already in queue: " + selectedSong);
+                        showWarning("Cannot add song to queue", "Song already in queue: " + selectedSong.getTitle());
                         return;
                     }
 
-                    queueManager.addSong(selectedSong);
-                    queueCreated.set(true); // Enable Clear Queue & buttons
+                    queueManager.addSong(selectedSong, playlistManager.getMediaLibrary());
+                    queueCreated.set(true);
 
-                    // Initialize player for first song
+                    // Initialize player for first song if needed
                     if (queueManager.getQueueSize() == 1) {
                         media = new Media(selectedSong.getSongFile().toURI().toString());
                         mediaPlayer = new MediaPlayer(media);
-                        songLabel.setText(selectedSong.getTitle()); // Metadata-aware display
+                        songLabel.setText(selectedSong.getTitle());
                         attachMediaPlayListeners();
                         mediaPlayer.pause();
                     }
 
-                    // Switch to queue view automatically so user sees added song
                     listViewMode.set("queue");
                     displayQueue();
                 }
@@ -305,7 +342,7 @@ public class AudioPlayerController implements Initializable {
             mediaPlayer = null;
         }
 
-        songLabel.setText("Please select a playlist from the library below");
+        songLabel.setText("Please select a playlist from the Playlist library below");
         listViewMode.set("playlists");
         displayPlaylists();
         songProgressBar.setProgress(0);
@@ -430,143 +467,12 @@ public class AudioPlayerController implements Initializable {
         displayQueue();
     }
 
-    // === IMPORT MP3 HANDLING ===
-
-    @FXML
-    void importMP3(ActionEvent event) {
-        System.out.println("DEBUG: Import button clicked!");
-        openFileChooser();
-    }
-
-    private void openFileChooser() {
-        // Determine the target playlist BEFORE opening the file chooser
-        String targetPlaylistName = null;
-
-        if (listViewMode.get().equals("playlists")) {
-            targetPlaylistName = mediaListView.getSelectionModel().getSelectedItem();
-        } else if (listViewMode.get().equals("songs")) {
-            targetPlaylistName = infoLabel2.getText(); // currently previewed playlist
-        } else {
-            // Queue mode: show warning alert and do NOT open file chooser
-            Platform.runLater(() -> {
-                Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.setTitle("Import Disabled");
-                alert.setHeaderText(null);
-                alert.setContentText("Please select a playlist before importing MP3 files.");
-                alert.showAndWait();
-            });
-            return; // Exit method, don't open file chooser
-        }
-
-        if (targetPlaylistName == null || targetPlaylistName.isEmpty()) {
-            // No playlist selected: show warning alert
-            Platform.runLater(() -> {
-                Alert alert = new Alert(Alert.AlertType.WARNING);
-                alert.setTitle("No Playlist Selected");
-                alert.setHeaderText(null);
-                alert.setContentText("Please select a playlist before importing MP3 files.");
-                alert.showAndWait();
-            });
-            return;
-        }
-
-        // === Proceed with file chooser ===
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select MP3 Files");
-
-        FileChooser.ExtensionFilter mp3Filter =
-                new FileChooser.ExtensionFilter("MP3 Files (*.mp3)", "*.mp3");
-        fileChooser.getExtensionFilters().add(mp3Filter);
-
-        Stage stage = (Stage) importMP3Button.getScene().getWindow();
-        List<File> selectedFiles = fileChooser.showOpenMultipleDialog(stage);
-
-        if (selectedFiles != null && !selectedFiles.isEmpty()) {
-            processSelectedFiles(selectedFiles, targetPlaylistName);
-        } else {
-            System.out.println("DEBUG: No files selected or dialog cancelled");
-        }
-    }
-
-    /**
-     * Processes imported MP3 files, copying them to the correct playlist folder,
-     * updating the PlaylistManager, and refreshing the ListView.
-     */
-    private void processSelectedFiles(List<File> selectedFiles, String targetPlaylistName) {
-        if (targetPlaylistName == null || targetPlaylistName.isEmpty()) return;
-
-        // Ensure the playlist exists in PlaylistManager
-        playlistManager.addPlaylist(targetPlaylistName);
-
-        File targetFolder = new File(directory, targetPlaylistName);
-        if (!targetFolder.exists()) {
-            targetFolder.mkdirs();
-        }
-
-        int copiedCount = 0;
-
-        for (File file : selectedFiles) {
-            if (file.getName().toLowerCase().endsWith(".mp3")) {
-                try {
-                    String fileName = file.getName();
-                    Path targetPath = getUniqueFilePath(targetFolder.toPath(), fileName);
-
-                    Files.copy(file.toPath(), targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-                    // Create a Song object and add it to the PlaylistManager
-                    Song newSong = new Song(targetPath.toFile());
-                    playlistManager.addSongToPlaylist(newSong, targetPlaylistName);
-
-                    copiedCount++;
-                    System.out.println("SUCCESS: Copied " + file.getName() + " to " + targetPath);
-                } catch (java.io.IOException e) {
-                    System.err.println("ERROR copying file " + file.getName() + ": " + e.getMessage());
-                }
-            }
-        }
-
-        // Show result alert and refresh ListView
-        int finalCopiedCount = copiedCount;
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Import Complete");
-            alert.setHeaderText(null);
-
-            if (finalCopiedCount > 0) {
-                alert.setContentText("Successfully imported " + finalCopiedCount + " MP3 file(s) into playlist: " + targetPlaylistName);
-
-                // Refresh ListView depending on current mode
-                if (listViewMode.get().equals("playlists")) {
-                    displayPlaylists(); // Refresh playlist list
-                } else if (listViewMode.get().equals("songs")) {
-                    displaySongs(targetPlaylistName); // Refresh currently previewed playlist
-                }
-            } else {
-                alert.setContentText("No MP3 files were imported.");
-            }
-
-            alert.showAndWait();
-        });
-    }
-
-    private Path getUniqueFilePath(Path directory, String fileName) {
-        Path target = directory.resolve(fileName);
-
-        if (!Files.exists(target)) {
-            return target;
-        }
-
-        String baseName = fileName.replaceFirst("[.][^.]+$", "");
-        String extension = ".mp3";
-
-        int counter = 1;
-        while (Files.exists(target)) {
-            String newFileName = baseName + " (" + counter + ")" + extension;
-            target = directory.resolve(newFileName);
-            counter++;
-        }
-
-        return target;
+    private void showWarning(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     // === INITIALIZATION ===
@@ -589,12 +495,7 @@ public class AudioPlayerController implements Initializable {
         // Clear queue button only enabled when queue exists
         clearQueueButton.disableProperty().bind(queueCreated.not());
 
-        // Disable import button in queue mode dynamically
-        listViewMode.addListener((obs, oldVal, newVal) -> {
-            importMP3Button.setDisable("queue".equals(newVal));
-        });
-
-        songLabel.setText("Please create a queue from the library below");
+        songLabel.setText("Please create a queue from the Playlist library below");
 
         // Update playback button states whenever queueCreated changes
         queueCreated.addListener((obs, oldVal, newVal) -> {
@@ -602,7 +503,7 @@ public class AudioPlayerController implements Initializable {
             playbackButton.setDisable(!newVal);
             nextButton.setDisable(!newVal);
 
-            if (!newVal) songLabel.setText("Please select a playlist from the library below");
+            if (!newVal) songLabel.setText("Please select a playlist from the Playlist library below");
         });
 
         // Initialize ListView mode to playlists
