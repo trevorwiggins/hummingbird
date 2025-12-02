@@ -8,69 +8,63 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 /**
- * Central manager for all playlists owned by a single user.
+ * central manager for all playlists owned by a single user.
  *
- * Responsibilities:
- * <ul>
- *     <li>Load playlists from disk into memory.</li>
- *     <li>Keep an in-memory mapping of playlist name → list of canonical {@link Song} objects.</li>
- *     <li>Maintain a shared {@link MediaLibrary} of all songs in the user's library.</li>
- *     <li>Keep playlist `.songlink` files in sync with in-memory state.</li>
- *     <li>Handle deletion of songs everywhere (from playlists, library, and disk).</li>
- * </ul>
+ * responsibilities:
+ * load playlists from disk into memory.
+ * keep an in-memory mapping of playlist name → list of canonical song objects.
+ * maintain a shared medialibrary of all songs in the user's library.
+ * keep playlist .songlink files in sync with in-memory state.
+ * handle deletion of songs everywhere (from playlists, library, and disk).
  *
- * Storage model:
- * <ul>
- *     <li>All actual <code>.mp3</code> files live in a shared <b>library</b> directory.</li>
- *     <li>Each playlist has its own directory under the <b>playlists</b> root.</li>
- *     <li>Playlist directories only contain <code>.songlink</code> files, each storing
- *         the filename of a library MP3.</li>
- *     <li>Every playlist references the same canonical {@link Song} instances
- *         from the shared {@link MediaLibrary}.</li>
- * </ul>
+ * storage model:
+ * all actual .mp3 files live in a shared library directory.
+ * each playlist has its own directory under the playlists root.
+ * playlist directories only contain .songlink files, each storing
+ * the filename of a library mp3.
+ * every playlist references the same canonical song instances
+ * from the shared medialibrary.
  */
 public class PlaylistManager {
 
-    // ===================== IN-MEMORY STATE =====================
+    //===================== in-memory state =====================
 
-    /** Mapping from playlist name → ordered list of songs in that playlist. */
+    /** mapping from playlist name → ordered list of songs in that playlist. */
     private final Map<String, List<Song>> playlists;
 
-    /** Root directory where playlist subfolders live (e.g., users/username/playlists). */
+    /** root directory where playlist subfolders live (e.g., users/username/playlists). */
     private final File rootDirectory;
 
-    /** Directory where the actual .mp3 files are stored for this user. */
+    /** directory where the actual .mp3 files are stored for this user. */
     private final File libraryDirectory;
 
-    /** Shared media library that holds the canonical Song instances. */
+    /** shared media library that holds the canonical song instances. */
     private final MediaLibrary mediaLibrary;
 
-    // ===================== CONSTRUCTION & LOADING =====================
+    //===================== construction & loading =====================
 
     /**
-     * Creates a PlaylistManager, loads all playlists from the given directory,
-     * and builds an in-memory {@link MediaLibrary} of canonical songs.
-     * <p>
-     * Expected layout:
-     * <pre>
+     * creates a playlistmanager, loads all playlists from the given directory,
+     * and builds an in-memory medialibrary of canonical songs.
+     *
+     * expected layout:
      * users/
      *   username/
      *     playlists/
-     *       Some Playlist/
-     *         A_Song.mp3.songlink    (contains: "A_Song.mp3")
+     *       some playlist/
+     *         a_song.mp3.songlink    (contains: "a_song.mp3")
      *     library/
-     *       A_Song.mp3
-     * </pre>
+     *       a_song.mp3
      *
      * @param directory root directory containing playlist subfolders
-     *                  (e.g., <code>users/test_user1/playlists</code>)
+     *                  (e.g., users/test_user1/playlists)
      */
     public PlaylistManager(File directory) {
         this.playlists = new HashMap<>();
         this.mediaLibrary = new MediaLibrary();
         this.rootDirectory = directory;
 
-        // If playlists root is invalid, still try to infer library directory and bail early
+        //if playlists root is invalid, still try to infer library directory and bail early
         if (directory == null || !directory.exists() || !directory.isDirectory()) {
             System.out.println("Invalid playlist directory: " + directory);
             this.libraryDirectory = (directory != null && directory.getParentFile() != null)
@@ -79,10 +73,10 @@ public class PlaylistManager {
             return;
         }
 
-        // Library folder is sibling of "playlists" (e.g., users/test_user1/library)
+        //library folder is sibling of "playlists" (e.g., users/test_user1/library)
         File parent = directory.getParentFile();
         if (parent == null) {
-            // Fallback: library folder inside the same directory
+            //fallback: library folder inside the same directory
             this.libraryDirectory = new File(directory, "library");
         } else {
             this.libraryDirectory = new File(parent, "library");
@@ -92,7 +86,7 @@ public class PlaylistManager {
             System.out.println("Warning: Failed to create library directory: " + libraryDirectory.getAbsolutePath());
         }
 
-        // Scan each playlist folder and reconstruct playlists in memory
+        //scan each playlist folder and reconstruct playlists in memory
         File[] playlistFolders = directory.listFiles(File::isDirectory);
         if (playlistFolders == null) return;
 
@@ -100,7 +94,7 @@ public class PlaylistManager {
             String playlistName = folder.getName();
             List<Song> songs = new ArrayList<>();
 
-            // Each .songlink file inside this folder maps to a library MP3 filename
+            //each .songlink file inside this folder maps to a library mp3 filename
             File[] linkFiles = folder.listFiles(
                     f -> f.isFile() && f.getName().toLowerCase().endsWith(".songlink")
             );
@@ -120,14 +114,14 @@ public class PlaylistManager {
                             continue;
                         }
 
-                        // Get or create canonical Song
+                        //get or create canonical song
                         Song canonical = mediaLibrary.getSongByFile(songFile);
                         if (canonical == null) {
                             canonical = new Song(songFile);
                             mediaLibrary.addSong(canonical);
                         }
 
-                        // Avoid duplicates in a single playlist
+                        //avoid duplicates in a single playlist
                         if (!songs.contains(canonical)) {
                             songs.add(canonical);
                         }
@@ -142,16 +136,14 @@ public class PlaylistManager {
         }
     }
 
-    // ===================== PLAYLIST CREATION / DELETION =====================
+    //===================== playlist creation / deletion =====================
 
     /**
-     * Creates or overwrites a playlist with the given name and songs.
-     * <ul>
-     *     <li>Each incoming Song is moved/ensured in the shared library folder.</li>
-     *     <li>Canonical Song instances are stored in memory.</li>
-     *     <li>A folder for the playlist is created (if missing).</li>
-     *     <li><code>.songlink</code> files are created for each song.</li>
-     * </ul>
+     * creates or overwrites a playlist with the given name and songs.
+     * each incoming song is moved/ensured in the shared library folder.
+     * canonical song instances are stored in memory.
+     * a folder for the playlist is created (if missing).
+     * .songlink files are created for each song.
      *
      * @param name  playlist name (case-sensitive)
      * @param songs initial songs to include (may be null or empty)
@@ -160,7 +152,7 @@ public class PlaylistManager {
         if (name == null || name.isBlank()) return;
         if (rootDirectory == null || libraryDirectory == null) return;
 
-        // Build canonical, deduplicated list for this playlist
+        //build canonical, deduplicated list for this playlist
         List<Song> canonicalSongs = new ArrayList<>();
         if (songs != null) {
             for (Song s : songs) {
@@ -174,28 +166,26 @@ public class PlaylistManager {
             }
         }
 
-        // Store in-memory representation
+        //store in-memory representation
         playlists.put(name, canonicalSongs);
 
-        // Ensure on-disk playlist folder exists
+        //ensure on-disk playlist folder exists
         File folder = new File(rootDirectory, name);
         if (!folder.exists() && !folder.mkdirs()) {
             System.out.println("Warning: Failed to create playlist folder: " + folder.getAbsolutePath());
         }
 
-        // Create one .songlink per song
+        //create one .songlink per song
         for (Song s : canonicalSongs) {
             createLinkFileForSong(folder, s);
         }
     }
 
     /**
-     * Deletes a playlist entirely:
-     * <ul>
-     *     <li>Removes it from the in-memory map.</li>
-     *     <li>Deletes its folder and all contents (all <code>.songlink</code> files).</li>
-     * </ul>
-     * This does not delete songs from the MediaLibrary or from the library directory.
+     * deletes a playlist entirely:
+     * removes it from the in-memory map.
+     * deletes its folder and all contents (all .songlink files).
+     * this does not delete songs from the medialibrary or from the library directory.
      *
      * @param name name of the playlist to delete
      */
@@ -214,7 +204,7 @@ public class PlaylistManager {
     }
 
     /**
-     * Recursively deletes a directory and all of its children.
+     * recursively deletes a directory and all of its children.
      *
      * @param dir directory to delete
      * @return true if everything was removed successfully
@@ -233,17 +223,15 @@ public class PlaylistManager {
         return dir.delete();
     }
 
-    // ===================== SONG MANAGEMENT =====================
+    //===================== song management =====================
 
     /**
-     * Adds a song to a specific playlist (creating the playlist on demand)
+     * adds a song to a specific playlist (creating the playlist on demand)
      * and ensures its file is stored in the shared library.
-     * <ul>
-     *     <li>The song's file is copied into the library directory if needed.</li>
-     *     <li>A canonical Song is placed in the {@link MediaLibrary}.</li>
-     *     <li>The canonical Song is added to the playlist's list (if not already present).</li>
-     *     <li>A <code>.songlink</code> file is created in the playlist folder.</li>
-     * </ul>
+     * the song's file is copied into the library directory if needed.
+     * a canonical song is placed in the medialibrary.
+     * the canonical song is added to the playlist's list (if not already present).
+     * a .songlink file is created in the playlist folder.
      *
      * @param song         song to add
      * @param playlistName target playlist name
@@ -254,30 +242,28 @@ public class PlaylistManager {
 
         Song canonical = ensureSongInLibraryAndMediaLibrary(song);
 
-        // Get or create in-memory playlist
+        //get or create in-memory playlist
         List<Song> list = playlists.computeIfAbsent(playlistName, k -> new ArrayList<>());
         if (!list.contains(canonical)) {
             list.add(canonical);
         }
 
-        // Ensure on-disk playlist folder exists
+        //ensure on-disk playlist folder exists
         File folder = new File(rootDirectory, playlistName);
         if (!folder.exists() && !folder.mkdirs()) {
             System.out.println("Warning: Failed to create playlist folder: " + folder.getAbsolutePath());
         }
 
-        // Create .songlink entry pointing to the library file
+        //create .songlink entry pointing to the library file
         createLinkFileForSong(folder, canonical);
     }
 
     /**
-     * Removes a song from a specific playlist, both in memory and on disk:
-     * <ul>
-     *     <li>Removes the {@link Song} from the playlist's list.</li>
-     *     <li>Deletes all <code>.songlink</code> files in that playlist folder
-     *         that reference this song's filename.</li>
-     * </ul>
-     * The song stays in the MediaLibrary and in other playlists.
+     * removes a song from a specific playlist, both in memory and on disk:
+     * removes the song from the playlist's list.
+     * deletes all .songlink files in that playlist folder
+     * that reference this song's filename.
+     * the song stays in the medialibrary and in other playlists.
      *
      * @param song         song to remove
      * @param playlistName playlist name
@@ -291,7 +277,7 @@ public class PlaylistManager {
             list.remove(song);
         }
 
-        // Remove matching .songlink files from disk
+        //remove matching .songlink files from disk
         File folder = new File(rootDirectory, playlistName);
         if (!folder.exists() || !folder.isDirectory()) return;
 
@@ -319,13 +305,11 @@ public class PlaylistManager {
     }
 
     /**
-     * Completely removes a song from the system:
-     * <ol>
-     *     <li>Remove it from every in-memory playlist.</li>
-     *     <li>Delete all <code>.songlink</code> files in all playlists that reference it.</li>
-     *     <li>Remove it from the {@link MediaLibrary}.</li>
-     *     <li>Delete the underlying .mp3 file from the library directory.</li>
-     * </ol>
+     * completely removes a song from the system:
+     * remove it from every in-memory playlist.
+     * delete all .songlink files in all playlists that reference it.
+     * remove it from the medialibrary.
+     * delete the underlying .mp3 file from the library directory.
      *
      * @param song song to remove everywhere
      */
@@ -338,13 +322,13 @@ public class PlaylistManager {
 
         String targetName = songFile.getName();
 
-        // 1) Remove from every in-memory playlist
+        //1) remove from every in-memory playlist
         for (Map.Entry<String, List<Song>> entry : playlists.entrySet()) {
             List<Song> songs = entry.getValue();
             songs.remove(song);
         }
 
-        // 2) Remove all .songlink entries pointing to this song
+        //2) remove all .songlink entries pointing to this song
         File[] playlistFolders = rootDirectory.listFiles(File::isDirectory);
         if (playlistFolders != null) {
             for (File folder : playlistFolders) {
@@ -368,10 +352,10 @@ public class PlaylistManager {
             }
         }
 
-        // 3) Remove from MediaLibrary
+        //3) remove from medialibrary
         boolean existed = mediaLibrary.removeSongFromLibrary(song);
 
-        // 4) Delete the actual audio file
+        //4) delete the actual audio file
         if (existed && songFile.exists()) {
             if (!songFile.delete()) {
                 System.out.println("Warning: Failed to delete library file: " + songFile.getAbsolutePath());
@@ -379,18 +363,16 @@ public class PlaylistManager {
         }
     }
 
-    // ===================== INTERNAL HELPERS =====================
+    //===================== internal helpers =====================
 
     /**
-     * Ensures that:
-     * <ul>
-     *     <li>The given Song's audio file is stored inside the shared library directory.</li>
-     *     <li>A canonical {@link Song} pointing to the library file exists in the {@link MediaLibrary}.</li>
-     * </ul>
-     * If the Song is already in the library and registered, this simply returns the existing instance.
+     * ensures that:
+     * the given song's audio file is stored inside the shared library directory.
+     * a canonical song pointing to the library file exists in the medialibrary.
+     * if the song is already in the library and registered, this simply returns the existing instance.
      *
-     * @param song incoming Song that may point to an arbitrary location
-     * @return canonical Song that points to a file inside the library directory
+     * @param song incoming song that may point to an arbitrary location
+     * @return canonical song that points to a file inside the library directory
      */
     private Song ensureSongInLibraryAndMediaLibrary(Song song) {
         if (song == null || libraryDirectory == null) return song;
@@ -400,10 +382,10 @@ public class PlaylistManager {
             return song;
         }
 
-        // Destination file inside the library directory
+        //destination file inside the library directory
         File libraryFile = new File(libraryDirectory, sourceFile.getName());
 
-        // Copy into library if it isn't already there
+        //copy into library if it isn't already there
         if (!libraryFile.equals(sourceFile)) {
             if (!libraryFile.exists()) {
                 try {
@@ -414,7 +396,7 @@ public class PlaylistManager {
             }
         }
 
-        // Look up or register canonical Song tied to the library file
+        //look up or register canonical song tied to the library file
         Song canonical = mediaLibrary.getSongByFile(libraryFile);
         if (canonical == null) {
             canonical = new Song(libraryFile);
@@ -425,10 +407,10 @@ public class PlaylistManager {
     }
 
     /**
-     * Creates or overwrites a <code>.songlink</code> file for the given song
+     * creates or overwrites a .songlink file for the given song
      * inside the specified playlist folder.
-     * <p>
-     * The file content is just the MP3 filename, which is interpreted relative
+     *
+     * the file content is just the mp3 filename, which is interpreted relative
      * to the library directory.
      *
      * @param playlistFolder playlist directory
@@ -450,14 +432,14 @@ public class PlaylistManager {
         }
     }
 
-    // ===================== PUBLIC GETTERS & UTILITIES =====================
+    //===================== public getters & utilities =====================
 
     /**
-     * Returns the Song at a given index within a named playlist.
+     * returns the song at a given index within a named playlist.
      *
      * @param playlistName name of playlist to look in
      * @param index        zero-based index
-     * @return the Song at that position, or {@code null} if out of range
+     * @return the song at that position, or null if out of range
      */
     public Song getSongFromPlaylist(String playlistName, int index) {
         List<Song> list = playlists.get(playlistName);
@@ -466,8 +448,8 @@ public class PlaylistManager {
     }
 
     /**
-     * Returns a copy of the song list for a given playlist.
-     * Modifications to the returned list do not affect internal state.
+     * returns a copy of the song list for a given playlist.
+     * modifications to the returned list do not affect internal state.
      *
      * @param playlistName name of playlist
      * @return new list of songs, or an empty list if playlist does not exist
@@ -485,7 +467,7 @@ public class PlaylistManager {
         return playlists.keySet().toArray(new String[0]);
     }
 
-    /** @return the shared {@link MediaLibrary} used by all playlists. */
+    /** @return the shared medialibrary used by all playlists. */
     public MediaLibrary getMediaLibrary() {
         return mediaLibrary;
     }
@@ -495,13 +477,13 @@ public class PlaylistManager {
         return rootDirectory;
     }
 
-    /** @return the shared library directory where MP3 files are stored. */
+    /** @return the shared library directory where mp3 files are stored. */
     public File getLibraryDirectory() {
         return libraryDirectory;
     }
 
     /**
-     * Checks whether a playlist with the given name exists in memory.
+     * checks whether a playlist with the given name exists in memory.
      *
      * @param name playlist name
      * @return true if the playlist is known to this manager
@@ -512,10 +494,10 @@ public class PlaylistManager {
     }
 
     /**
-     * Rewrites all playlist folders on disk so that their <code>.songlink</code> files
+     * rewrites all playlist folders on disk so that their .songlink files
      * exactly match the current in-memory playlist structure.
-     * <p>
-     * This is useful after bulk edits (imports, deletions) to ensure disk state
+     *
+     * this is useful after bulk edits (imports, deletions) to ensure disk state
      * and in-memory state are synced.
      */
     public void savePlaylistsToDisk() {
@@ -531,7 +513,7 @@ public class PlaylistManager {
                 continue;
             }
 
-            // Remove any existing .songlink files
+            //remove any existing .songlink files
             File[] existingLinks = folder.listFiles(
                     f -> f.isFile() && f.getName().toLowerCase().endsWith(".songlink")
             );
@@ -543,7 +525,7 @@ public class PlaylistManager {
                 }
             }
 
-            // Recreate .songlink files from current in-memory list
+            //recreate .songlink files from current in-memory list
             if (songs != null) {
                 for (Song s : songs) {
                     createLinkFileForSong(folder, s);
@@ -553,7 +535,7 @@ public class PlaylistManager {
     }
 
     /**
-     * Returns a human-readable summary of all playlists and their songs.
+     * returns a human-readable summary of all playlists and their songs.
      */
     @Override
     public String toString() {
